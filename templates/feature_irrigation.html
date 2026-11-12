@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Irrigation Scheduler — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Smart Irrigation Scheduler</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Soil moisture + baarish ka forecast dono ko milakar batate hain — aaj paani dein ya kal tak rukein.</p>
+
+  <div class="card">
+    <div class="field"><label>Crop</label>
+      <select id="irrCrop">
+        <option>Rice</option><option>Wheat</option><option>Maize</option>
+        <option>Sugarcane</option><option>Groundnut</option><option>Cotton</option><option>Vegetables</option>
+      </select>
+    </div>
+    <div class="field"><label>Location</label><select id="irrLoc"></select></div>
+    <div class="field">
+      <label>Current soil moisture (%) — <span id="irrMoistureVal">40</span>%</label>
+      <input type="range" id="irrMoisture" min="5" max="90" value="40" oninput="document.getElementById('irrMoistureVal').textContent=this.value" style="width:100%;">
+    </div>
+    <button class="btn btn-primary" onclick="checkIrrigation()">Get Irrigation Advice</button>
+  </div>
+
+  <div id="irrResult"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateIrrLoc(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('irrLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+  });
+}
+
+const ACTION_LABELS = {
+  skip: { icon: '✅', title: 'Skip Irrigation Today', color: 'var(--leaf-700)' },
+  wait: { icon: '⏳', title: 'Wait — Rain Expected', color: 'var(--gold-600)' },
+  irrigate_today: { icon: '💧', title: 'Irrigate Today', color: 'var(--alert-600)' },
+  irrigate_in_2_days: { icon: '📅', title: 'Irrigate Within 2 Days', color: 'var(--gold-600)' },
+};
+
+function checkIrrigation(){
+  const crop = document.getElementById('irrCrop').value;
+  const location = document.getElementById('irrLoc').value;
+  const soil_moisture_percent = document.getElementById('irrMoisture').value;
+  document.getElementById('irrResult').innerHTML = '<div class="card"><div class="skeleton skeleton-line"></div></div>';
+  fetch('/api/irrigation_schedule', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, location, soil_moisture_percent})})
+    .then(r=>r.json()).then(d=>{
+      const lbl = ACTION_LABELS[d.action] || ACTION_LABELS.irrigate_in_2_days;
+      document.getElementById('irrResult').innerHTML = `
+        <div class="card">
+          <div class="card-title" style="color:${lbl.color};">${lbl.icon} ${lbl.title}</div>
+          <p class="mt-0">${d.reason}</p>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Soil moisture</span><b>${d.soil_moisture_percent}% (threshold ${d.threshold_percent}%)</b>
+          </div>
+          <div class="flex-between" style="margin-top:6px;">
+            <span class="muted">Rain expected (next 2 days)</span><b>${d.rain_next_2_days_mm} mm</b>
+          </div>
+        </div>`;
+    });
+}
+
+populateIrrLoc();
+</script>
+{% endblock %}

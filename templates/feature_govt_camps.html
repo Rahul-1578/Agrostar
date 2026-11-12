@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Govt Camps &amp; Mela — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Nearby Govt Camps &amp; Krishi Mela</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Area me kab koi agri fair, subsidy camp, ya training session hone wala hai — miss na karein.</p>
+
+  <div class="field"><label>Filter by location</label><select id="campLocFilter" onchange="loadCamps()"></select></div>
+  <div class="field"><label>Filter by type</label><select id="campTypeFilter" onchange="loadCamps()"><option value="">All types</option></select></div>
+
+  <div id="campsList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const CAMP_ICONS = {
+  "Krishi Mela": "🎪", "Subsidy Camp": "💰", "Soil Testing": "🧪", "Training": "📚",
+};
+
+function populateCampFilters(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('campLocFilter').innerHTML = '<option value="">All locations</option>' + d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    loadCamps();
+  });
+}
+
+function loadCamps(){
+  const location = document.getElementById('campLocFilter').value;
+  const camp_type = document.getElementById('campTypeFilter').value;
+  const params = new URLSearchParams();
+  if (location) params.set('location', location);
+  if (camp_type) params.set('camp_type', camp_type);
+
+  fetch('/api/govt_camps?' + params.toString()).then(r=>r.json()).then(d=>{
+    if (document.getElementById('campTypeFilter').options.length <= 1){
+      document.getElementById('campTypeFilter').innerHTML = '<option value="">All types</option>' + d.camp_types.map(t=>`<option>${t}</option>`).join('');
+    }
+    document.getElementById('campsList').innerHTML = d.camps.map(c => `
+      <div class="card">
+        <div class="flex-between">
+          <div><b>${CAMP_ICONS[c.camp_type] || '📅'} ${c.name}</b><div class="muted" style="font-size:12px;">📍 ${c.location}</div></div>
+          <span class="chip chip-stable">${c.camp_type}</span>
+        </div>
+        <p class="mt-0" style="margin-top:8px;font-size:13px;">${c.description}</p>
+        <div class="muted" style="font-size:12px;margin-top:8px;">📅 ${c.date}</div>
+      </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Is filter ke liye koi camp nahi mila.</p></div>';
+  });
+}
+
+populateCampFilters();
+</script>
+{% endblock %}

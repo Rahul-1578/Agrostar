@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Market Prices — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_market">Market Prices</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="field">
+    <label data-i18n="market_location_label">Mandi / location</label>
+    <select id="locSelect" onchange="loadPrices(); loadTrend();"></select>
+  </div>
+  <p class="muted" id="updated">&nbsp;</p>
+  <div id="priceList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+
+  <div class="section-title">Price Trend</div>
+  <div class="card">
+    <div class="field"><label>Crop</label><select id="trendCrop" onchange="loadTrend()"></select></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <span class="chip chip-up" id="trend30Btn" style="cursor:pointer;" onclick="setTrendDays(30)">30 Days</span>
+      <span class="chip chip-stable" id="trend90Btn" style="cursor:pointer;" onclick="setTrendDays(90)">90 Days</span>
+    </div>
+    <div id="trendResult"><div class="skeleton skeleton-line"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateLocations(selectId, cb){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    const sel = document.getElementById(selectId);
+    sel.innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    if(cb) cb();
+  });
+}
+
+function loadPrices(){
+  const loc = document.getElementById('locSelect').value || 'Bhubaneswar (City Centre)';
+  const updatedLabel = (TRANSLATIONS[getCurrentLang()] || TRANSLATIONS.en).market_updated;
+  fetch('/api/market_prices?location=' + encodeURIComponent(loc)).then(r=>r.json()).then(d=>{
+    document.getElementById('updated').textContent = updatedLabel + ' ' + d.updated;
+    document.getElementById('priceList').innerHTML = d.prices.map(p=>`
+      <div class="card flex-between">
+        <div><b>${p.crop}</b><div class="muted">${p.mandi}</div></div>
+        <div style="text-align:right;">
+          <div style="font-family:var(--font-display);font-size:17px;">₹${p.price_per_quintal}<span style="font-size:11px;font-weight:400;color:var(--text-soft);">/quintal</span></div>
+          <span class="chip chip-${p.trend==='up'?'up':p.trend==='down'?'down':'stable'}">
+            ${p.trend==='up'?'▲':p.trend==='down'?'▼':'—'} ${Math.abs(p.change_percent)}%
+          </span>
+        </div>
+      </div>`).join('');
+    if (document.getElementById('trendCrop').options.length === 0){
+      document.getElementById('trendCrop').innerHTML = d.prices.map(p => `<option>${p.crop}</option>`).join('');
+      loadTrend();
+    }
+  });
+}
+
+let trendDays = 30;
+
+function setTrendDays(days){
+  trendDays = days;
+  document.getElementById('trend30Btn').className = days === 30 ? 'chip chip-up' : 'chip chip-stable';
+  document.getElementById('trend90Btn').className = days === 90 ? 'chip chip-up' : 'chip chip-stable';
+  loadTrend();
+}
+
+function loadTrend(){
+  const cropSelect = document.getElementById('trendCrop');
+  if (!cropSelect.value) return;
+  const crop = cropSelect.value;
+  const location = document.getElementById('locSelect').value || 'Bhubaneswar (City Centre)';
+  fetch(`/api/market_price_trend?crop=${encodeURIComponent(crop)}&location=${encodeURIComponent(location)}&days=${trendDays}`)
+    .then(r=>r.json()).then(d=>{
+      const maxP = Math.max(...d.chart_points.map(p => p.price));
+      document.getElementById('trendResult').innerHTML = `
+        <div class="flex-between">
+          <div>
+            <div style="font-family:var(--font-display);font-size:22px;">₹${d.current_price}</div>
+            <span class="muted" style="font-size:12px;">current price</span>
+          </div>
+          <span class="chip ${d.change_percent >= 0 ? 'chip-up' : 'chip-down'}">${d.change_percent >= 0 ? '▲' : '▼'} ${Math.abs(d.change_percent)}% over ${d.days}d</span>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:100px;margin-top:14px;">
+          ${d.chart_points.map(p => `
+            <div style="flex:1;text-align:center;" title="${p.date}: ₹${p.price}">
+              <div style="background:var(--gold-500);border-radius:3px 3px 0 0;height:${Math.max(6, (p.price/maxP)*90)}px;"></div>
+            </div>`).join('')}
+        </div>
+        <div class="flex-between" style="margin-top:12px;font-size:12px;">
+          <span class="muted">Low: ₹${d.min_price}</span>
+          <span class="muted">Avg: ₹${d.avg_price}</span>
+          <span class="muted">High: ₹${d.max_price}</span>
+        </div>
+        <p class="mt-0" style="margin-top:10px;font-size:13px;">${d.sell_advice}</p>`;
+    });
+}
+
+populateLocations('locSelect', loadPrices);
+</script>
+{% endblock %}

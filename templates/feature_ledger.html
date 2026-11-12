@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Farm Ledger — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Farm Expense/Income Ledger</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Apna kharcha (beej, khaad, mazdoor) aur kamai record karein — profit/loss dekhein, aur ye record bank loan ke liye bhi kaam aayega.</p>
+
+  <div class="card flex-between" id="summaryCard">
+    <div>
+      <div class="muted" style="font-size:12px;">Total Income</div>
+      <div style="font-family:var(--font-display);font-size:20px;color:var(--leaf-700);" id="sumIncome">₹0</div>
+    </div>
+    <div>
+      <div class="muted" style="font-size:12px;">Total Expense</div>
+      <div style="font-family:var(--font-display);font-size:20px;color:var(--alert-600);" id="sumExpense">₹0</div>
+    </div>
+    <div>
+      <div class="muted" style="font-size:12px;">Profit / Loss</div>
+      <div style="font-family:var(--font-display);font-size:20px;" id="sumProfit">₹0</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📷 Scan a Receipt</div>
+    <p class="muted mt-0">Khaad/beej ki receipt ki photo lein — amount aur category automatically fill ho jaayega.</p>
+    <input type="file" id="receiptPhoto" accept="image/*" capture="environment">
+    <button class="btn btn-gold" style="margin-top:8px;" onclick="scanReceipt()">Scan Receipt</button>
+    <p class="muted" id="scanStatus" style="margin-top:8px;"></p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">➕ Add Entry</div>
+    <div class="field" style="display:flex;gap:10px;">
+      <label style="display:flex;align-items:center;gap:6px;margin:0;"><input type="radio" name="entryType" value="income" style="width:auto;" checked> Income (Kamai)</label>
+      <label style="display:flex;align-items:center;gap:6px;margin:0;"><input type="radio" name="entryType" value="expense" style="width:auto;"> Expense (Kharcha)</label>
+    </div>
+    <div class="field"><label>Category</label>
+      <select id="ledgerCategory">
+        <option>Seeds (Beej)</option>
+        <option>Fertilizer (Khaad)</option>
+        <option>Pesticide</option>
+        <option>Labour (Mazdoor)</option>
+        <option>Irrigation / Fuel</option>
+        <option>Equipment Rent</option>
+        <option>Crop Sale</option>
+        <option>Govt Subsidy</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="field"><label>Amount (₹)</label><input type="number" id="ledgerAmount" min="1" placeholder="e.g. 2500"></div>
+    <div class="field"><label>Note (optional)</label><input type="text" id="ledgerNote" placeholder="e.g. Urea for 2 acres"></div>
+    <button class="btn btn-primary" onclick="submitLedgerEntry()">Add Entry</button>
+  </div>
+
+  <div class="section-title">Recent Entries</div>
+  <div id="ledgerList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const LEDGER_KEY = 'agrostar_ledger';
+
+function scanReceipt(){
+  const fileInput = document.getElementById('receiptPhoto');
+  const statusEl = document.getElementById('scanStatus');
+  if (!fileInput.files.length) { statusEl.textContent = 'Pehle ek photo chunein.'; return; }
+
+  const formData = new FormData();
+  formData.append('photo', fileInput.files[0]);
+  statusEl.textContent = 'Scanning...';
+
+  fetch('/api/scan_receipt', {method:'POST', body: formData})
+    .then(r=>r.json()).then(d=>{
+      if (d.status !== 'scanned'){
+        statusEl.textContent = d.message || 'Scan failed — amount manually daalein.';
+        return;
+      }
+      if (d.suggested_amount) document.getElementById('ledgerAmount').value = d.suggested_amount;
+      // Set category dropdown if it matches one of the options
+      const catSelect = document.getElementById('ledgerCategory');
+      for (const opt of catSelect.options) {
+        if (opt.value === d.suggested_category) { catSelect.value = d.suggested_category; break; }
+      }
+      document.querySelector('input[name="entryType"][value="expense"]').checked = true;
+      statusEl.textContent = d.ocr_available
+        ? '✅ Scanned! Amount aur category pre-filled hai — check karke "Add Entry" dabayein.'
+        : '⚠️ OCR is not available on this server — please fill the amount manually.';
+    })
+    .catch(() => { statusEl.textContent = 'Scan failed — amount manually daalein.'; });
+}
+
+function getLedgerEntries(){
+  try { const raw = localStorage.getItem(LEDGER_KEY); return raw ? JSON.parse(raw) : []; }
+  catch(e){ return []; }
+}
+function saveLedgerEntries(list){
+  try { localStorage.setItem(LEDGER_KEY, JSON.stringify(list)); } catch(e){}
+}
+
+function submitLedgerEntry(){
+  const type = document.querySelector('input[name="entryType"]:checked').value;
+  const category = document.getElementById('ledgerCategory').value;
+  const amount = parseFloat(document.getElementById('ledgerAmount').value);
+  const note = document.getElementById('ledgerNote').value.trim();
+  if (!amount || amount <= 0) { document.getElementById('ledgerAmount').focus(); return; }
+
+  const entries = getLedgerEntries();
+  entries.unshift({ id: Date.now().toString(36), type, category, amount, note, date: new Date().toISOString() });
+  saveLedgerEntries(entries);
+  document.getElementById('ledgerAmount').value = '';
+  document.getElementById('ledgerNote').value = '';
+  renderLedger();
+}
+
+function deleteLedgerEntry(id){
+  saveLedgerEntries(getLedgerEntries().filter(e => e.id !== id));
+  renderLedger();
+}
+
+function renderLedger(){
+  const entries = getLedgerEntries();
+  const income = entries.filter(e => e.type === 'income').reduce((s,e) => s + e.amount, 0);
+  const expense = entries.filter(e => e.type === 'expense').reduce((s,e) => s + e.amount, 0);
+  const profit = income - expense;
+
+  document.getElementById('sumIncome').textContent = '₹' + income.toLocaleString('en-IN');
+  document.getElementById('sumExpense').textContent = '₹' + expense.toLocaleString('en-IN');
+  const profitEl = document.getElementById('sumProfit');
+  profitEl.textContent = (profit >= 0 ? '₹' : '-₹') + Math.abs(profit).toLocaleString('en-IN');
+  profitEl.style.color = profit >= 0 ? 'var(--leaf-700)' : 'var(--alert-600)';
+
+  if (!entries.length){
+    document.getElementById('ledgerList').innerHTML = '<div class="card center"><p class="mt-0 muted">Abhi tak koi entry nahi hai — upar se pehli entry jodein.</p></div>';
+    return;
+  }
+  document.getElementById('ledgerList').innerHTML = entries.slice(0, 50).map(e => `
+    <div class="card flex-between">
+      <div>
+        <b>${e.category}</b>
+        ${e.note ? `<div class="muted" style="font-size:12px;">${e.note}</div>` : ''}
+        <div class="muted" style="font-size:11px;">${new Date(e.date).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:var(--font-display);font-size:16px;color:${e.type==='income' ? 'var(--leaf-700)' : 'var(--alert-600)'};">
+          ${e.type==='income' ? '+' : '-'}₹${e.amount.toLocaleString('en-IN')}
+        </div>
+        <button class="ri-delete-btn" onclick="deleteLedgerEntry('${e.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+renderLedger();
+</script>
+{% endblock %}

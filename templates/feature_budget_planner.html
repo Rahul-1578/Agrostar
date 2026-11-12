@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Season Budget Planner — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Season Budget Planner</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Bona shuru karne se pehle pura kharcha (beej+khaad+mazdoor+irrigation) aur expected munafa dekh lein.</p>
+
+  <div class="card">
+    <div class="field"><label>Crop</label>
+      <select id="bpCrop">
+        <option>Rice</option><option>Wheat</option><option>Maize</option><option>Sugarcane</option>
+        <option>Groundnut</option><option>Cotton</option><option>Tomato</option><option>Onion</option>
+      </select>
+    </div>
+    <div class="field"><label>Area (acres)</label><input type="number" id="bpArea" value="1" min="0.1" step="0.1"></div>
+    <button class="btn btn-primary" onclick="calcBudget()">Calculate Budget</button>
+  </div>
+
+  <div id="bpResult"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function calcBudget(){
+  const crop = document.getElementById('bpCrop').value;
+  const area_acres = document.getElementById('bpArea').value;
+  document.getElementById('bpResult').innerHTML = '<div class="card"><div class="skeleton skeleton-line"></div></div>';
+  fetch('/api/budget_planner', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, area_acres})})
+    .then(r=>r.json()).then(d=>{
+      const items = d.cost_items;
+      const rows = Object.keys(items).map(k => `
+        <div class="flex-between" style="margin-top:6px;">
+          <span class="muted">${k}</span><span>₹${items[k].toLocaleString('en-IN')}</span>
+        </div>`).join('');
+      const profitColor = d.expected_profit >= 0 ? 'var(--leaf-700)' : 'var(--alert-600)';
+      const shareMsg = `💸 AgroStar Budget Plan\nCrop: ${d.crop} (${d.area_acres} acre)\nTotal Cost: ₹${d.total_cost.toLocaleString('en-IN')}\nExpected Revenue: ₹${d.expected_revenue.toLocaleString('en-IN')}\nEstimated Profit: ₹${d.expected_profit.toLocaleString('en-IN')}`;
+      document.getElementById('bpResult').innerHTML = `
+        <div class="card">
+          <div class="card-title">💸 Estimated Cost — ${d.area_acres} acre(s) of ${d.crop}</div>
+          ${rows}
+          <div class="flex-between" style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;">
+            <b>Total Cost</b><b>₹${d.total_cost.toLocaleString('en-IN')}</b>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">📈 Expected Revenue</div>
+          <div class="flex-between"><span class="muted">Expected yield</span><span>${d.expected_yield_quintal} quintal</span></div>
+          <div class="flex-between" style="margin-top:6px;"><span class="muted">Market price</span><span>₹${d.market_price_per_quintal}/quintal</span></div>
+          <div class="flex-between" style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;">
+            <b>Total Revenue</b><b>₹${d.expected_revenue.toLocaleString('en-IN')}</b>
+          </div>
+        </div>
+        <div class="card">
+          <div class="flex-between">
+            <span class="card-title" style="margin:0;">Estimated Profit</span>
+            <span style="font-family:var(--font-display);font-size:22px;color:${profitColor};">₹${d.expected_profit.toLocaleString('en-IN')}</span>
+          </div>
+          <p class="muted" style="margin-top:8px;">Ye estimate hai — actual yield aur mandi bhaav se profit alag ho sakta hai.</p>
+          <a href="https://wa.me/?text=${encodeURIComponent(shareMsg)}" target="_blank" class="btn-sm btn btn-outline" style="margin-top:10px;display:inline-block;text-decoration:none;">📱 Share on WhatsApp</a>
+        </div>`;
+    });
+}
+
+calcBudget();
+</script>
+{% endblock %}

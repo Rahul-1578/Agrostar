@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}QR Traceability — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">QR Farm-to-Table Traceability</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Apni fasal ke liye QR code banayein — buyer scan karke dekh sakta hai kisne, kab, aur kaise ugaya. Organic/premium produce ke liye behtar price milta hai.</p>
+
+  <div class="card">
+    <div class="card-title">🌾 Create a Traceability Record</div>
+    <div class="field"><label>Crop</label>
+      <select id="traceCrop"><option>Rice</option><option>Wheat</option><option>Maize</option><option>Tomato</option><option>Onion</option><option>Groundnut</option></select>
+    </div>
+    <div class="field"><label>Harvest date</label><input type="date" id="traceHarvestDate"></div>
+    <div class="field"><label>Location</label><select id="traceLoc"></select></div>
+    <div class="field">
+      <label>Practices used</label>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:400;"><input type="checkbox" class="trace-practice" value="Organic" style="width:auto;"> Organic</label>
+        <label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:400;"><input type="checkbox" class="trace-practice" value="No Pesticide" style="width:auto;"> No Pesticide</label>
+        <label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:400;"><input type="checkbox" class="trace-practice" value="Drip Irrigation" style="width:auto;"> Drip Irrigation Used</label>
+        <label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:400;"><input type="checkbox" class="trace-practice" value="Vermicompost" style="width:auto;"> Vermicompost / Natural Fertilizer</label>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="createTraceRecord()">Generate QR Code</button>
+  </div>
+
+  <div id="newTraceResult"></div>
+
+  <div class="section-title">Your QR Codes</div>
+  <div id="traceRecordsList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateTraceLoc(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('traceLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+  });
+}
+
+function createTraceRecord(){
+  const crop = document.getElementById('traceCrop').value;
+  const harvest_date = document.getElementById('traceHarvestDate').value;
+  const location = document.getElementById('traceLoc').value;
+  const practices = Array.from(document.querySelectorAll('.trace-practice:checked')).map(cb => cb.value);
+  if (!harvest_date) { document.getElementById('traceHarvestDate').focus(); return; }
+
+  fetch('/api/trace_record', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, harvest_date, location, practices})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'created'){
+        document.getElementById('newTraceResult').innerHTML = `
+          <div class="card center" style="border:2px solid var(--gold-500);">
+            <img src="${d.qr_image_url}" alt="QR Code" style="width:180px;height:180px;margin:10px 0;">
+            <p class="muted" style="font-size:12px;">Buyer is QR ko scan karke produce details dekh sakta hai.</p>
+            <a href="${d.public_url}" target="_blank" class="btn-sm btn btn-outline">Preview Public Page ↗</a>
+          </div>`;
+        loadTraceRecords();
+      }
+    });
+}
+
+function loadTraceRecords(){
+  fetch('/api/trace_records').then(r=>r.json()).then(d=>{
+    if (!d.records.length){
+      document.getElementById('traceRecordsList').innerHTML = '<div class="card center"><p class="mt-0 muted">Abhi tak koi QR code nahi banaya.</p></div>';
+      return;
+    }
+    document.getElementById('traceRecordsList').innerHTML = d.records.map(r => `
+      <div class="card">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <img src="${r.qr_image_url}" alt="QR" style="width:70px;height:70px;flex-shrink:0;">
+          <div>
+            <b>${r.crop}</b>
+            <div class="muted" style="font-size:12px;">📍 ${r.location} • Harvested ${r.harvest_date}</div>
+            ${r.practices.length ? `<div style="margin-top:4px;">${r.practices.map(p=>`<span class="chip chip-up" style="margin-right:4px;font-size:10px;">${p}</span>`).join('')}</div>` : ''}
+          </div>
+        </div>
+        <a href="${r.public_url}" target="_blank" class="btn-sm btn btn-outline" style="margin-top:10px;">View Public Page ↗</a>
+      </div>`).join('');
+  });
+}
+
+populateTraceLoc();
+loadTraceRecords();
+</script>
+{% endblock %}

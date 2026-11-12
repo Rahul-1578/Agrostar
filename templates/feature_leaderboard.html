@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Leaderboard &amp; Badges</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Sustainability score, app usage, aur community help ke basis par dekhein aap kaha khade hain.</p>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;" id="lbCategoryChips"></div>
+
+  <div class="card center" id="myRankCard">
+    <div class="skeleton skeleton-line"></div>
+  </div>
+
+  <div id="leaderboardList"></div>
+
+  <div class="section-title">All Badges</div>
+  <div class="badge-grid" id="allBadgesGrid"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let lbCategory = 'total';
+const CATEGORY_LABELS = { total: 'Overall', sustainability: 'Sustainability', usage: 'App Usage', community: 'Community Help' };
+
+function loadLeaderboard(){
+  fetch('/api/leaderboard?category=' + lbCategory).then(r=>r.json()).then(d=>{
+    document.getElementById('lbCategoryChips').innerHTML = Object.keys(CATEGORY_LABELS).map(c => `
+      <span class="chip ${c===lbCategory ? 'chip-up' : 'chip-stable'}" style="cursor:pointer;" onclick="lbCategory='${c}';loadLeaderboard();">${CATEGORY_LABELS[c]}</span>`).join('');
+
+    document.getElementById('myRankCard').innerHTML = `
+      <div style="font-size:13px;color:var(--text-soft);">Your Rank</div>
+      <div style="font-family:var(--font-display);font-size:32px;color:var(--leaf-700);">#${d.my_rank}</div>
+      <div class="muted" style="font-size:12px;">out of ${d.total_farmers} farmers</div>`;
+
+    const medals = ['🥇', '🥈', '🥉'];
+    document.getElementById('leaderboardList').innerHTML = d.leaderboard.map((row, idx) => `
+      <div class="card flex-between" ${row.is_you ? 'style="border:2px solid var(--gold-500);"' : ''}>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;width:28px;text-align:center;">${medals[idx] || '#' + row.rank}</span>
+          <div>
+            <b>${row.is_you ? 'You' : row.name}</b>
+            <div class="muted" style="font-size:12px;">${row.location}</div>
+          </div>
+        </div>
+        <b style="font-family:var(--font-display);color:var(--leaf-700);">${row.total_points} pts</b>
+      </div>`).join('');
+  });
+}
+
+fetch('/api/gamification').then(r=>r.json()).then(d=>{
+  document.getElementById('allBadgesGrid').innerHTML = d.badges.map(b => `
+    <div class="badge-item ${b.earned ? '' : 'locked'}">
+      <div class="badge-ic">${b.earned ? '🏅' : '🔒'}</div>
+      <span>${b.name}</span>
+    </div>`).join('');
+});
+
+loadLeaderboard();
+</script>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">A</div>
+    <h1 data-i18n="dash_title">Dashboard</h1>
+  </div>
+  <a href="/feature/reminders" class="bell-wrap" aria-label="Reminders">🔔<span class="reminder-badge-count"></span></a>
+</div>
+<div class="page-body">
+
+  <div class="dash-weather" id="dashWeatherCard">
+    <div class="row">
+      <div>
+        <div class="muted" style="color:#CDE6D3;"><span data-i18n="txt_today">Today</span> • <span id="dashWeatherLoc">Bhubaneswar</span></div>
+        <div class="temp" id="dashTemp">--°C</div>
+        <div style="font-size:13px;opacity:0.85;" id="dashWeatherDesc" data-i18n="txt_partly_cloudy">Partly cloudy, light breeze</div>
+      </div>
+      <div style="font-size:44px;" id="dashWeatherIcon">⛅</div>
+    </div>
+  </div>
+
+  <a id="dashReminderBanner" class="alert-banner" href="/feature/reminders" style="text-decoration:none;">
+    ⏰ <span id="dashReminderText" data-i18n="dash_no_reminders">No reminders set — tap to add one.</span>
+  </a>
+
+  <div class="streak-card">
+    <div>
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;">🔥 <span data-i18n="dash_streak">Farming Streak</span></div>
+      <div class="streak-num" id="streakNum">--</div>
+      <div style="font-size:12px;" data-i18n="txt_days_following">days of following recommendations</div>
+    </div>
+    <a href="/profile" class="chip chip-stable" style="background:rgba(255,255,255,0.5);"><span data-i18n="dash_view_badges">View badges →</span></a>
+  </div>
+
+  <div class="section-title" data-i18n="dash_at_a_glance">At a Glance</div>
+  <div class="card flex-between">
+    <a href="/feature/farm-ledger" style="text-decoration:none;color:inherit;flex:1;">
+      <div class="muted" style="font-size:12px;">📒 <span data-i18n="dash_profit_loss">Profit / Loss</span></div>
+      <div style="font-family:var(--font-display);font-size:18px;" id="dashLedgerSummary">--</div>
+    </a>
+    <a href="/feature/sustainability" style="text-decoration:none;color:inherit;flex:1;text-align:right;">
+      <div class="muted" style="font-size:12px;">🌿 <span data-i18n="dash_sustainability_short">Sustainability</span></div>
+      <div style="font-family:var(--font-display);font-size:18px;color:var(--leaf-700);" id="dashSustainabilitySummary">--</div>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="dash_crop_health">Crop Health</div>
+  <div class="card" id="dashFieldsCard">
+    <div class="flex-between">
+      <div>
+        <div class="card-title" style="margin-bottom:2px;">🌾 Rice — Field 1</div>
+        <span class="muted">Stage: Tillering • Day 24</span>
+      </div>
+      <div class="stalk-progress" id="stalk1"></div>
+    </div>
+  </div>
+
+  <div class="section-title" data-i18n="dash_market">Market Prices — Nearby Mandi</div>
+  <div class="card" id="marketCard">
+    <div class="skeleton skeleton-line"></div>
+    <div class="skeleton skeleton-line"></div>
+    <div class="skeleton skeleton-line short"></div>
+  </div>
+
+  <div class="section-title" data-i18n="dash_quick_actions">Quick Actions</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/weather"><span class="tile-ic tile-sky">⛅</span><span data-i18n="dash_qa_weather">Weather</span></a>
+    <a class="feature-tile" href="/feature/fertilizer-plan"><span class="tile-ic tile-earth">🧴</span><span data-i18n="dash_qa_fertilizer">Fertilizer</span></a>
+    <a class="feature-tile" href="/feature/market-prices"><span class="tile-ic tile-gold">💰</span><span data-i18n="dash_qa_market">Market</span></a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Growth-stalk signature progress bar (5 bars, filled proportionally)
+(function(){
+  const el = document.getElementById('stalk1');
+  const filled = 2; // out of 5
+  for(let i=0;i<5;i++){
+    const bar = document.createElement('div');
+    bar.className = 'bar' + (i < filled ? ' filled' : '');
+    bar.style.height = (8 + i*4) + 'px';
+    el.appendChild(bar);
+  }
+})();
+
+fetch('/api/market_prices').then(r=>r.json()).then(d=>{
+  const card = document.getElementById('marketCard');
+  card.innerHTML = d.prices.slice(0,3).map(p=>`
+    <div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-weight:600;">${p.crop}</span>
+      <span>₹${p.price_per_quintal}<span style="font-size:10px;color:var(--text-soft);">/quintal</span>
+        <span class="chip chip-${p.trend==='up'?'up':p.trend==='down'?'down':'stable'}">
+          ${p.trend==='up'?'▲':p.trend==='down'?'▼':'—'} ${Math.abs(p.change_percent)}%
+        </span>
+      </span>
+    </div>`).join('');
+});
+
+fetch('/api/gamification').then(r=>r.json()).then(d=>{
+  document.getElementById('streakNum').textContent = d.streak_days;
+});
+
+// Live weather (was previously a hardcoded "32°C, Partly cloudy" placeholder)
+fetch('/api/weather?location=Bhubaneswar (City Centre)').then(r=>r.json()).then(d=>{
+  const cur = d.current || {};
+  if (cur.temp !== undefined && cur.temp !== null){
+    document.getElementById('dashTemp').textContent = Math.round(cur.temp) + '°C';
+  }
+  if (cur.icon) document.getElementById('dashWeatherIcon').textContent = cur.icon;
+  const desc = document.getElementById('dashWeatherDesc');
+  if (cur.humidity !== undefined){
+    desc.textContent = `Humidity ${cur.humidity}% • Wind ${Math.round(cur.wind_speed || 0)} km/h`;
+  }
+}).catch(()=>{ /* keep the default placeholder text on failure */ });
+
+// Farm Ledger summary (reads the same localStorage the Ledger page uses)
+(function renderDashLedgerSummary(){
+  try {
+    const raw = localStorage.getItem('agrostar_ledger');
+    const entries = raw ? JSON.parse(raw) : [];
+    const income = entries.filter(e => e.type === 'income').reduce((s,e) => s + e.amount, 0);
+    const expense = entries.filter(e => e.type === 'expense').reduce((s,e) => s + e.amount, 0);
+    const profit = income - expense;
+    const el = document.getElementById('dashLedgerSummary');
+    if (!entries.length){
+      el.textContent = t('dash_no_ledger_entries');
+      el.style.color = 'var(--text-soft)';
+    } else {
+      el.textContent = (profit >= 0 ? '₹' : '-₹') + Math.abs(profit).toLocaleString('en-IN');
+      el.style.color = profit >= 0 ? 'var(--leaf-700)' : 'var(--alert-600)';
+    }
+  } catch(e) {
+    document.getElementById('dashLedgerSummary').textContent = '--';
+  }
+})();
+
+// Sustainability score summary
+fetch('/api/sustainability_score').then(r=>r.json()).then(d=>{
+  document.getElementById('dashSustainabilitySummary').textContent = d.score + '/100';
+});
+
+// My Fields summary (reads the same localStorage the My Fields page uses)
+(function renderDashFields(){
+  try {
+    const raw = localStorage.getItem('agrostar_fields');
+    const fields = raw ? JSON.parse(raw) : [];
+    const card = document.getElementById('dashFieldsCard');
+    if (!fields.length) return; // keep the default sample card as a helpful placeholder
+    card.innerHTML = fields.slice(0, 3).map(f => `
+      <div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">🌾 ${f.crop} — ${f.name}</div>
+          <span class="muted">${f.area_acres} acres${f.location ? ' • ' + f.location : ''}</span>
+        </div>
+      </div>`).join('') + `<a href="/feature/my-fields" style="display:block;margin-top:8px;color:var(--leaf-700);font-weight:700;font-size:13px;text-decoration:none;">${t('dash_manage_fields')}</a>`;
+  } catch(e) { /* keep default card on failure */ }
+})();
+
+// Dynamic reminder banner: shows the most urgent real reminder from
+// localStorage (overdue/due-today takes priority, else the soonest
+// upcoming one), instead of a static hardcoded message.
+(function renderDashReminderBanner(){
+  const banner = document.getElementById('dashReminderBanner');
+  const textEl = document.getElementById('dashReminderText');
+  const due = dueReminders();
+  const upcoming = activeReminders();
+
+  if (due.length){
+    banner.classList.add('overdue-look');
+    textEl.textContent = `${due[0].task} — ${due[0].crop} (${reminderDueLabel(due[0].dueAt)})`;
+  } else if (upcoming.length){
+    textEl.textContent = `${t('dash_next_reminder')}: ${upcoming[0].task} — ${upcoming[0].crop} (${reminderDueLabel(upcoming[0].dueAt)})`;
+  } else {
+    textEl.textContent = t('dash_no_reminders');
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Soil Health — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_soil">Soil Health Analysis</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="card">
+    <div class="card-title">🧪 <span data-i18n="card_field_location">Field location</span></div>
+    <div class="field"><label data-i18n="lbl_field_name">Field name</label><input type="text" id="loc" placeholder="e.g. Field 1 - North plot"></div>
+    <button class="btn btn-primary" data-i18n="btn_analyze_soil" onclick="analyze()">Analyze Soil</button>
+  </div>
+
+  <div id="result" style="display:none;">
+    <!-- Overall Score -->
+    <div class="card" style="text-align:center;">
+      <div class="card-title">📊 <span data-i18n="card_soil_score">Soil Health Score</span></div>
+      <div style="font-size:42px;font-weight:700;color:var(--leaf-600,var(--leaf-700));line-height:1.1;" id="score">--</div>
+      <div class="muted" style="font-size:12px;margin-top:4px;" data-i18n="txt_score_out_of">out of 100</div>
+    </div>
+
+    <!-- Primary NPK + pH + OC -->
+    <div class="card">
+      <div class="card-title">📋 <span data-i18n="card_npk_report">NPK Report</span></div>
+      <div class="flex-between" style="padding:6px 0;"><span data-i18n="lbl_soil_ph">Soil pH</span><b id="ph">--</b></div>
+      <div class="flex-between" style="padding:6px 0;"><span data-i18n="lbl_nitrogen">Nitrogen (N)</span><b id="n">--</b></div>
+      <div class="flex-between" style="padding:6px 0;"><span data-i18n="lbl_phosphorus">Phosphorus (P)</span><b id="p">--</b></div>
+      <div class="flex-between" style="padding:6px 0;"><span data-i18n="lbl_potassium">Potassium (K)</span><b id="k">--</b></div>
+      <div class="flex-between" style="padding:6px 0;"><span data-i18n="lbl_organic_carbon">Organic Carbon</span><b id="oc">--</b></div>
+    </div>
+
+    <!-- Extra soil health metrics -->
+    <div class="card">
+      <div class="card-title">🔬 <span data-i18n="card_extra_metrics">Additional Metrics</span></div>
+      <div class="flex-between" style="padding:6px 0;"><span data-i18n="lbl_moisture">Soil Moisture</span><b id="moisture">--</b></div>
+      <div class="flex-between" style="padding:6px 0;"><span data-i18n="lbl_ec">Electrical Conductivity (EC)</span><b id="ec">--</b></div>
+      <div class="flex-between" style="padding:6px 0;"><span data-i18n="lbl_zinc">Zinc (Zn)</span><b id="zinc">--</b></div>
+      <div class="flex-between" style="padding:6px 0;"><span data-i18n="lbl_sulphur">Sulphur (S)</span><b id="sulphur">--</b></div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="card">
+      <div class="card-title">💡 <span data-i18n="card_recommendations">Recommendations</span></div>
+      <ul id="recList" style="padding-left:18px;margin:0;line-height:1.8;"></ul>
+    </div>
+
+    <!-- Crop Rotation Benefits -->
+    <div class="card">
+      <div class="card-title">🔄 <span data-i18n="card_crop_rotation">Crop Rotation Benefits</span></div>
+      <p class="muted" style="font-size:12px;margin:0 0 10px;" data-i18n="txt_rotation_intro">Suggested sequences that improve soil fertility, break pest cycles and reduce fertilizer need:</p>
+      <div id="rotationList"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function analyze(){
+  const loc = document.getElementById('loc').value || 'Your field';
+  fetch('/api/soil_health', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({location: loc})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('score').textContent = d.soil_health_score || '--';
+      document.getElementById('ph').textContent = d.ph;
+      document.getElementById('n').textContent = d.nitrogen;
+      document.getElementById('p').textContent = d.phosphorus;
+      document.getElementById('k').textContent = d.potassium;
+      document.getElementById('oc').textContent = d.organic_carbon;
+      document.getElementById('moisture').textContent = d.moisture || '--';
+      document.getElementById('ec').textContent = d.ec || '--';
+      document.getElementById('zinc').textContent = d.zinc || '--';
+      document.getElementById('sulphur').textContent = d.sulphur || '--';
+      document.getElementById('recList').innerHTML = (d.recommendations || []).map(tip=>`<li>${tip}</li>`).join('');
+
+      // Crop rotation cards
+      const rot = d.crop_rotation || [];
+      document.getElementById('rotationList').innerHTML = rot.map(r => `
+        <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">🌱 ${r.sequence}</div>
+          <div class="muted" style="font-size:12px;line-height:1.5;">${r.benefit}</div>
+        </div>
+      `).join('');
+    });
+}
+</script>
+{% endblock %}

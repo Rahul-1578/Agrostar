@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Pashu Health Tracker — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Pashu (Dairy/Livestock) Health Tracker</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Apne pashu (gaay, bhains, bakri) ka basic health record rakhein — vaccination, checkup, aur bimari ka track.</p>
+
+  <div class="card">
+    <div class="card-title">🐄 Add Animal</div>
+    <div class="field"><label>Animal type</label>
+      <select id="pashuType"><option>Cow (Gaay)</option><option>Buffalo (Bhains)</option><option>Goat (Bakri)</option><option>Poultry</option><option>Other</option></select>
+    </div>
+    <div class="field"><label>Tag / name</label><input type="text" id="pashuTag" placeholder="e.g. Gaay #1 / Lakshmi"></div>
+    <button class="btn btn-primary" onclick="addAnimal()">Add Animal</button>
+  </div>
+
+  <div class="section-title">Your Animals</div>
+  <div id="animalList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const PASHU_KEY = 'agrostar_pashu';
+
+function getAnimals(){
+  try { const raw = localStorage.getItem(PASHU_KEY); return raw ? JSON.parse(raw) : []; }
+  catch(e){ return []; }
+}
+function saveAnimals(list){
+  try { localStorage.setItem(PASHU_KEY, JSON.stringify(list)); } catch(e){}
+}
+
+function addAnimal(){
+  const type = document.getElementById('pashuType').value;
+  const tag = document.getElementById('pashuTag').value.trim();
+  if (!tag) { document.getElementById('pashuTag').focus(); return; }
+  const animals = getAnimals();
+  animals.unshift({ id: Date.now().toString(36), type, tag, records: [] });
+  saveAnimals(animals);
+  document.getElementById('pashuTag').value = '';
+  renderAnimals();
+}
+
+function addHealthRecord(animalId){
+  const note = prompt('Health record (e.g. "FMD vaccination done" ya "Checkup - healthy")');
+  if (!note || !note.trim()) return;
+  const animals = getAnimals();
+  const animal = animals.find(a => a.id === animalId);
+  if (!animal) return;
+  animal.records.unshift({ note: note.trim(), date: new Date().toISOString() });
+  saveAnimals(animals);
+  renderAnimals();
+}
+
+function deleteAnimal(id){
+  saveAnimals(getAnimals().filter(a => a.id !== id));
+  renderAnimals();
+}
+
+function renderAnimals(){
+  const animals = getAnimals();
+  if (!animals.length){
+    document.getElementById('animalList').innerHTML = '<div class="card center"><p class="mt-0 muted">Abhi tak koi pashu add nahi kiya hai.</p></div>';
+    return;
+  }
+  document.getElementById('animalList').innerHTML = animals.map(a => `
+    <div class="card">
+      <div class="flex-between">
+        <div><b>${a.tag}</b><div class="muted" style="font-size:12px;">${a.type}</div></div>
+        <button class="ri-delete-btn" onclick="deleteAnimal('${a.id}')">Remove</button>
+      </div>
+      <div style="margin-top:10px;">
+        ${a.records.length ? a.records.slice(0,5).map(r => `
+          <div style="padding:6px 0;border-top:1px solid var(--border-soft, #eee);">
+            <div style="font-size:13px;">${r.note}</div>
+            <div class="muted" style="font-size:11px;">${new Date(r.date).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</div>
+          </div>`).join('') : '<p class="muted" style="font-size:12px;">Koi health record nahi hai.</p>'}
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addHealthRecord('${a.id}')">➕ Add Health Record</button>
+    </div>`).join('');
+}
+
+renderAnimals();
+</script>
+{% endblock %}

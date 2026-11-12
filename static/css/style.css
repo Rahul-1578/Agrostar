@@ -1,0 +1,673 @@
+/* =========================================================
+   AGROSTAR — Design tokens
+   Palette: sage field (bg) + leaf green (primary) + harvest
+   gold (accent) + earth brown & sky blue (category accents)
+   Type: Baloo 2 (display, rounded/sturdy) + Hind (body, built
+   for Devanagari+Latin harmony) + Noto Sans (multilingual data)
+   Signature: "growth stalk" — a small rising-bar motif used for
+   progress, active nav state, and loading, instead of generic
+   spinners/progress bars.
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Hind:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600&display=swap');
+
+:root{
+  --leaf-900:#1E3F29;
+  --leaf-700:#2D5F3E;
+  --leaf-500:#4C8C5E;
+  --leaf-200:#CDE6D3;
+  --gold-600:#D98D1A;
+  --gold-500:#F0A83D;
+  --gold-200:#FBE3B8;
+  --earth-600:#8B5E3C;
+  --earth-200:#E6D4C1;
+  --sky-600:#3A7C8F;
+  --sky-200:#CDE9EF;
+  --alert-600:#C24A3B;
+  --bg:#F2F6EE;
+  --surface:#FFFFFF;
+  --surface-soft:#EAF1E4;
+  --text:#20301F;
+  --text-soft:#5A6B57;
+  --border:#DDE6D6;
+
+  --radius-lg:22px;
+  --radius-md:16px;
+  --radius-sm:10px;
+  --shadow-card:0 4px 16px rgba(30,63,41,0.08);
+  --shadow-pop:0 10px 30px rgba(30,63,41,0.16);
+
+  --font-display:'Baloo 2', sans-serif;
+  --font-body:'Hind', sans-serif;
+  --font-data:'Noto Sans', sans-serif;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font-body);
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+h1,h2,h3,h4,.font-display{font-family:var(--font-display);color:var(--leaf-900);margin:0;}
+p{line-height:1.5;}
+a{text-decoration:none;color:inherit;}
+button{font-family:var(--font-body);cursor:pointer;}
+img{max-width:100%;display:block;}
+
+/* ---------- App shell ---------- */
+.app-shell{
+  max-width:480px;
+  margin:0 auto;
+  min-height:100vh;
+  background:var(--bg);
+  position:relative;
+  padding-bottom:84px; /* room for bottom nav */
+}
+.app-shell.no-nav{padding-bottom:0;}
+.app-shell.no-nav .bottom-nav{display:none;}
+
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px 10px;
+}
+.topbar .brand{display:flex;align-items:center;gap:10px;}
+.topbar .brand-mark{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(160deg,var(--leaf-500),var(--leaf-900));
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-family:var(--font-display);font-weight:700;font-size:18px;
+}
+.topbar h1{font-size:20px;}
+.back-btn{
+  width:38px;height:38px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;color:var(--leaf-700);box-shadow:var(--shadow-card);
+}
+
+.page-body{padding:6px 20px 28px;}
+
+/* ---------- Bottom nav (5 default pages) ---------- */
+.bottom-nav{
+  position:fixed;left:50%;bottom:0;transform:translateX(-50%);
+  width:100%;max-width:480px;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  display:flex;justify-content:space-around;align-items:center;
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom));
+  z-index:50;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  font-size:11px;color:var(--text-soft);font-weight:600;
+  padding:6px 10px;border-radius:var(--radius-sm);position:relative;
+}
+.nav-item .nav-ic{font-size:20px;}
+.nav-item.active{color:var(--leaf-700);}
+.nav-item.active::before{
+  content:"";position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+  width:18px;height:4px;border-radius:3px;
+  background:linear-gradient(90deg,var(--gold-500),var(--leaf-500));
+}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  border:none;border-radius:var(--radius-md);
+  padding:15px 20px;font-size:16px;font-weight:700;font-family:var(--font-display);
+  width:100%;transition:transform .12s ease, box-shadow .12s ease;
+}
+.btn:active{transform:scale(0.98);}
+.btn-primary{background:var(--leaf-700);color:#fff;box-shadow:0 6px 18px rgba(45,95,62,0.35);}
+.btn-gold{background:var(--gold-500);color:var(--leaf-900);box-shadow:0 6px 18px rgba(240,168,61,0.35);}
+.btn-outline{background:var(--surface);color:var(--leaf-700);border:2px solid var(--leaf-200);}
+.btn-ghost{background:transparent;color:var(--text-soft);font-weight:600;}
+.btn-sm{padding:10px 16px;font-size:14px;width:auto;}
+.btn-google{
+  background:var(--surface);color:var(--text);border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  font-family:var(--font-body);
+}
+.btn-google:disabled{opacity:0.6;cursor:default;}
+.auth-divider{
+  display:flex;align-items:center;gap:10px;color:var(--text-soft);
+  font-size:12px;font-weight:600;margin:14px 0;
+}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--border);}
+
+/* ---------- Cards ---------- */
+.card{
+  background:var(--surface);border-radius:var(--radius-lg);
+  padding:18px;box-shadow:var(--shadow-card);border:1px solid var(--border);
+  margin-bottom:16px;
+}
+.card-title{font-size:15px;font-weight:700;color:var(--leaf-900);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+
+/* ---------- Feature grid ---------- */
+.feature-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;
+}
+.feature-tile{
+  aspect-ratio:1/1;border-radius:var(--radius-md);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  padding:10px;text-align:center;box-shadow:var(--shadow-card);
+  border:1px solid var(--border);background:var(--surface);
+  transition:transform .12s ease;
+}
+.feature-tile:active{transform:scale(0.95);}
+.feature-tile .tile-ic{font-size:26px;width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;}
+.feature-tile span{font-size:12px;font-weight:600;line-height:1.25;color:var(--text);}
+
+.tile-green{background:var(--leaf-200);}
+.tile-gold{background:var(--gold-200);}
+.tile-earth{background:var(--earth-200);}
+.tile-sky{background:var(--sky-200);}
+
+/* ---------- Growth-stalk signature (progress) ---------- */
+.stalk-progress{display:flex;align-items:flex-end;gap:3px;height:26px;}
+.stalk-progress .bar{
+  width:6px;border-radius:3px 3px 0 0;background:var(--surface-soft);
+  transition:height .4s ease, background .4s ease;
+}
+.stalk-progress .bar.filled{background:linear-gradient(180deg,var(--gold-500),var(--leaf-600,var(--leaf-700)));}
+
+.stage-track{display:flex;align-items:center;margin:14px 0 6px;}
+.stage-dot{
+  width:12px;height:12px;border-radius:50%;background:var(--surface-soft);
+  border:2px solid var(--border);flex-shrink:0;
+}
+.stage-dot.done{background:var(--leaf-500);border-color:var(--leaf-500);}
+.stage-dot.current{background:var(--gold-500);border-color:var(--gold-500);box-shadow:0 0 0 4px var(--gold-200);}
+.stage-line{flex:1;height:3px;background:var(--border);}
+.stage-line.done{background:var(--leaf-500);}
+
+/* ---------- Forms ---------- */
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--text-soft);margin-bottom:6px;}
+.field input,.field select,.field textarea{
+  width:100%;padding:13px 14px;border-radius:var(--radius-sm);
+  border:1.5px solid var(--border);font-family:var(--font-body);font-size:15px;
+  background:var(--surface);color:var(--text);
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--leaf-500);border-color:var(--leaf-500);}
+
+/* ---------- Chips / tags ---------- */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;
+}
+.chip-up{background:#E4F4E6;color:#1E7A3A;}
+.chip-down{background:#FBE7E4;color:var(--alert-600);}
+.chip-stable{background:var(--gold-200);color:var(--gold-600);}
+
+/* ---------- Welcome page ---------- */
+.welcome-hero{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:space-between;
+  padding:40px 28px 32px;
+  background:
+    radial-gradient(circle at 15% 8%, rgba(240,168,61,0.18), transparent 40%),
+    linear-gradient(180deg,#E9F1E1 0%, var(--bg) 55%);
+}
+.welcome-top{text-align:center;margin-top:8vh;}
+.welcome-logo{
+  width:84px;height:84px;border-radius:24px;margin:0 auto 18px;
+  background:linear-gradient(160deg,var(--leaf-500),var(--leaf-900));
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-family:var(--font-display);font-weight:800;font-size:38px;
+  box-shadow:var(--shadow-pop);
+}
+.welcome-top h1{font-size:34px;letter-spacing:0.5px;}
+.welcome-tagline{color:var(--leaf-700);font-weight:600;font-size:15px;margin-top:6px;}
+.welcome-illustration{margin:28px 0;display:flex;justify-content:center;}
+.quote-strip{
+  text-align:center;padding:14px 20px;margin-bottom:20px;
+  border-left:3px solid var(--gold-500);background:var(--surface);
+  border-radius:0 14px 14px 0;font-family:var(--font-display);
+  font-size:14px;color:var(--leaf-900);line-height:1.5;
+  transition:opacity 0.4s ease;
+}
+.quote-strip .quote-author{display:block;margin-top:6px;font-size:11px;font-weight:600;color:var(--text-soft);font-family:var(--font-body);}
+.welcome-actions{display:flex;flex-direction:column;gap:12px;}
+.welcome-actions .signup-row{display:flex;gap:10px;}
+.welcome-actions .signup-row .btn{flex:1;}
+.lang-pill{
+  align-self:center;margin-top:18px;font-size:12px;color:var(--text-soft);
+  display:flex;gap:6px;align-items:center;background:var(--surface);
+  padding:6px 12px;border-radius:20px;border:1px solid var(--border);
+}
+
+/* ---------- Auth: login tabs (Password / OTP) ---------- */
+.auth-tabs{display:flex;gap:6px;background:var(--surface-soft);padding:4px;border-radius:12px;margin-bottom:14px;}
+.auth-tab{
+  flex:1;padding:9px;border:none;border-radius:9px;background:transparent;
+  font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--text-soft);
+}
+.auth-tab.active{background:var(--surface);color:var(--leaf-700);box-shadow:var(--shadow-card);}
+.otp-demo-note{
+  background:var(--gold-200);color:#6B4A0F;font-size:12px;font-weight:600;
+  padding:10px 12px;border-radius:10px;margin-bottom:10px;line-height:1.5;
+}
+
+/* ---------- Chatbot ---------- */
+.chat-window{display:flex;flex-direction:column;gap:12px;padding-bottom:12px;}
+.msg{max-width:80%;padding:12px 14px;border-radius:16px;font-size:14px;line-height:1.4;}
+.msg-bot{background:var(--surface);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px;}
+.msg-user{background:var(--leaf-700);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
+.chat-input-bar{
+  position:fixed;bottom:84px;left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;background:var(--surface);
+  border-top:1px solid var(--border);padding:10px 14px;
+  display:flex;gap:8px;align-items:center;z-index:40;
+}
+.chat-input-bar input{flex:1;border:1.5px solid var(--border);border-radius:24px;padding:12px 16px;font-family:var(--font-body);font-size:14px;}
+.icon-btn{
+  width:44px;height:44px;border-radius:50%;border:none;
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.icon-btn.mic{background:var(--gold-200);color:var(--gold-600);}
+.icon-btn.send{background:var(--leaf-700);color:#fff;}
+.icon-btn.mic.recording{background:var(--alert-600);color:#fff;animation:pulse 1s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(194,74,59,0.5);}70%{box-shadow:0 0 0 12px rgba(194,74,59,0);}100%{box-shadow:0 0 0 0 rgba(194,74,59,0);}}
+
+/* ---------- Dashboard ---------- */
+.dash-weather{
+  background:linear-gradient(135deg,var(--leaf-700),var(--leaf-900));
+  color:#fff;border-radius:var(--radius-lg);padding:20px;margin-bottom:16px;
+}
+.dash-weather .temp{font-family:var(--font-display);font-size:40px;font-weight:700;}
+.dash-weather .row{display:flex;justify-content:space-between;align-items:center;}
+.alert-banner{
+  background:var(--gold-200);border-left:4px solid var(--gold-600);
+  border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;font-weight:600;
+  color:#6B4A0F;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;
+}
+.alert-banner.overdue-look{
+  background:#FBE7E4;border-left-color:var(--alert-600);color:#7A2E22;
+}
+.offline-banner{
+  background:var(--earth-600);color:#fff;font-size:12px;font-weight:600;
+  padding:8px 16px;display:flex;align-items:center;gap:10px;justify-content:center;
+}
+.offline-help-btn{
+  background:rgba(255,255,255,0.25);color:#fff;padding:4px 10px;
+  border-radius:14px;font-size:11px;font-weight:700;white-space:nowrap;
+}
+
+/* ---------- Human help fallback: floating button + welcome strip ---------- */
+.help-fab{
+  position:fixed;right:16px;bottom:96px;z-index:60;
+  width:52px;height:52px;border-radius:50%;border:none;
+  background:var(--leaf-700);color:#fff;font-size:22px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-pop);
+}
+.app-shell.no-nav .help-fab{bottom:20px;}
+.help-strip{
+  margin-top:18px;padding:12px 16px;border-radius:14px;
+  background:var(--surface);border:1px dashed var(--leaf-500);
+  font-size:12px;font-weight:600;color:var(--leaf-700);text-align:center;
+  cursor:pointer;
+}
+
+/* ---------- Section titles ---------- */
+.section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-soft);margin:20px 0 10px;}
+.section-title:first-child{margin-top:0;}
+
+/* ---------- Gamification ---------- */
+.streak-card{
+  background:linear-gradient(135deg,var(--gold-500),var(--gold-600));
+  color:#4A2E05;border-radius:var(--radius-lg);padding:18px;margin-bottom:16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.streak-card .streak-num{font-family:var(--font-display);font-size:34px;font-weight:800;}
+.badge-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.badge-item{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:12px 6px;border-radius:var(--radius-md);text-align:center;
+  background:var(--surface);border:1px solid var(--border);
+}
+.badge-item.locked{opacity:0.4;}
+.badge-item .badge-ic{font-size:26px;}
+.badge-item span{font-size:11px;font-weight:600;}
+
+/* ---------- NDVI / satellite health ---------- */
+.ndvi-gauge{
+  width:100%;height:14px;border-radius:8px;
+  background:linear-gradient(90deg,#C24A3B,#F0A83D,#4C8C5E);
+  position:relative;margin:10px 0;
+}
+.ndvi-marker{
+  position:absolute;top:-5px;width:4px;height:24px;background:var(--leaf-900);
+  border-radius:2px;transform:translateX(-50%);
+}
+
+/* ---------- Explainable AI ("Why this?") ---------- */
+.why-toggle{
+  display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
+  color:var(--leaf-700);background:none;border:none;padding:8px 0 0;cursor:pointer;
+}
+.why-panel{display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.why-panel.open{display:block;}
+.why-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;}
+.why-weight{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;}
+.why-weight.High{background:var(--leaf-200);color:var(--leaf-900);}
+.why-weight.Medium{background:var(--gold-200);color:var(--gold-600);}
+.why-weight.Low{background:var(--surface-soft);color:var(--text-soft);}
+
+/* ---------- Info modal (My Fields / Help / About) ---------- */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(30,48,30,0.5);
+  display:flex;align-items:flex-end;justify-content:center;z-index:100;
+}
+.modal-sheet{
+  background:var(--surface);width:100%;max-width:480px;
+  border-radius:24px 24px 0 0;padding:22px 20px 32px;
+  max-height:75vh;overflow-y:auto;
+}
+
+/* ---------- Utility ---------- */
+.flex-between{display:flex;justify-content:space-between;align-items:center;}
+.muted{color:var(--text-soft);font-size:13px;}
+.mt-0{margin-top:0;}
+.center{text-align:center;}
+
+/* Responsive: widen on tablets/desktop while keeping mobile-first proportions */
+@media (min-width:600px){
+  .app-shell{max-width:480px;box-shadow:0 0 40px rgba(30,63,41,0.08);}
+  body{background:var(--surface-soft);}
+}
+
+/* =========================================================
+   POLISH PASS — entrance animations, skeleton loaders,
+   modal transitions, and micro-interactions. Applied broadly
+   so the app feels alive rather than static/instant-snap.
+   ========================================================= */
+
+/* Page content fades + rises in on load, instead of popping in instantly */
+@keyframes fadeSlideUp{
+  from{opacity:0;transform:translateY(10px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.page-body{animation:fadeSlideUp 0.4s ease both;}
+.welcome-hero{animation:fadeSlideUp 0.5s ease both;}
+
+/* Cards/tiles cascade in with a tiny stagger for a "built for you" feel */
+.card, .feature-tile{animation:fadeSlideUp 0.35s ease both;}
+.feature-grid .feature-tile:nth-child(1){animation-delay:0.03s;}
+.feature-grid .feature-tile:nth-child(2){animation-delay:0.07s;}
+.feature-grid .feature-tile:nth-child(3){animation-delay:0.11s;}
+
+/* Tile hover lift on devices with a real pointer (skips touchscreens so it
+   doesn't interfere with tap) */
+@media (hover:hover){
+  .feature-tile{transition:transform .18s ease, box-shadow .18s ease;}
+  .feature-tile:hover{transform:translateY(-3px);box-shadow:var(--shadow-pop);}
+  .card{transition:box-shadow .18s ease;}
+  .btn{transition:transform .12s ease, box-shadow .18s ease, filter .12s ease;}
+  .btn:hover{filter:brightness(1.04);}
+}
+
+/* Skeleton shimmer — used while API data is loading, instead of plain
+   "Loading…" text, so the layout doesn't jump once data arrives */
+.skeleton{
+  background:linear-gradient(90deg, var(--surface-soft) 25%, var(--border) 50%, var(--surface-soft) 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.4s ease-in-out infinite;
+  border-radius:8px;
+}
+@keyframes shimmer{
+  0%{background-position:200% 0;}
+  100%{background-position:-200% 0;}
+}
+.skeleton-line{height:14px;margin-bottom:8px;width:100%;}
+.skeleton-line.short{width:55%;}
+.skeleton-block{height:80px;width:100%;}
+
+/* Modal: slide up from the bottom instead of snapping into place */
+@keyframes modalSlideUp{
+  from{transform:translateY(30px);opacity:0;}
+  to{transform:translateY(0);opacity:1;}
+}
+.modal-sheet{animation:modalSlideUp 0.28s cubic-bezier(0.22,1,0.36,1) both;}
+
+/* Chat message bubbles fade/slide in as they appear */
+@keyframes msgIn{
+  from{opacity:0;transform:translateY(6px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.msg{animation:msgIn 0.25s ease both;}
+
+/* AASHA "typing…" indicator — three bouncing dots, shown while waiting
+   for a chatbot reply so the assistant never feels frozen/unresponsive */
+.typing-indicator{display:flex;gap:4px;padding:14px 16px;}
+.typing-indicator span{
+  width:7px;height:7px;border-radius:50%;background:var(--leaf-500);
+  animation:typingBounce 1.2s infinite ease-in-out;
+}
+.typing-indicator span:nth-child(2){animation-delay:0.15s;}
+.typing-indicator span:nth-child(3){animation-delay:0.3s;}
+@keyframes typingBounce{
+  0%, 60%, 100%{transform:translateY(0);opacity:0.5;}
+  30%{transform:translateY(-5px);opacity:1;}
+}
+
+/* Streak card number ticks/pulses subtly when it updates */
+@keyframes gentlePulse{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.06);}
+  100%{transform:scale(1);}
+}
+.streak-num.pulse{animation:gentlePulse 0.5s ease;}
+
+/* Welcome logo gets a slow, subtle breathing animation — signals "alive"
+   without being distracting */
+@keyframes breathe{
+  0%, 100%{transform:scale(1);}
+  50%{transform:scale(1.04);}
+}
+.welcome-logo{animation:breathe 3.5s ease-in-out infinite;}
+
+/* Respect users who've asked for reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;}
+}
+
+/* =========================================================
+   DARK MODE — toggled via [data-theme="dark"] on <html>,
+   set from Profile ▸ Display and remembered in localStorage
+   (see app.js: initTheme / setTheme). Only the neutral tokens
+   are re-pointed — brand greens/golds stay the same so buttons,
+   chips, and the logo keep their identity in both themes.
+   ========================================================= */
+:root{
+  --bg-t:background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease;
+}
+body,.app-shell,.card,.feature-tile,.field input,.field select,.field textarea,
+.btn,.chip,.badge-item,.msg-bot,.chat-input-bar,.auth-tabs,.auth-tab,
+.help-strip,.bottom-nav,.modal-sheet,.quote-strip,.lang-pill{transition:var(--bg-t);}
+
+[data-theme="dark"]{
+  --bg:#12180F;
+  --surface:#1C2418;
+  --surface-soft:#232C1D;
+  --text:#EDF2E7;
+  --text-soft:#9FAE97;
+  --border:#333F2C;
+  --shadow-card:0 4px 16px rgba(0,0,0,0.45);
+  --shadow-pop:0 10px 30px rgba(0,0,0,0.6);
+}
+
+/* A few elements set text color straight to --leaf-900 (a very dark
+   green) for readability on the light surface — on dark surfaces that
+   needs to flip to the light --text token instead. Brand backgrounds
+   (buttons, gold chips, the logo mark) are untouched on purpose. */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] .font-display,
+[data-theme="dark"] .card-title,
+[data-theme="dark"] .quote-strip{ color:var(--text); }
+
+[data-theme="dark"] .welcome-hero{
+  background:
+    radial-gradient(circle at 15% 8%, rgba(240,168,61,0.12), transparent 40%),
+    linear-gradient(180deg,#1A2416 0%, var(--bg) 55%);
+}
+
+[data-theme="dark"] .otp-demo-note,
+[data-theme="dark"] .alert-banner{ color:#3A2C0A; }
+
+[data-theme="dark"] ::placeholder{ color:var(--text-soft); opacity:0.8; }
+
+/* ---------- Theme toggle switch (Profile ▸ Display) ---------- */
+.theme-switch-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;}
+.theme-switch-row .ts-label{display:flex;align-items:center;gap:10px;font-weight:600;}
+.theme-switch-row .ts-icon{font-size:18px;}
+.switch{position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.switch .slider{
+  position:absolute;cursor:pointer;inset:0;
+  background:var(--border);border-radius:999px;
+  transition:background-color .2s ease;
+}
+.switch .slider::before{
+  content:"";position:absolute;height:22px;width:22px;left:3px;top:3px;
+  background:#fff;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.25);
+  transition:transform .2s ease;
+}
+.switch input:checked + .slider{background:var(--leaf-700);}
+.switch input:checked + .slider::before{transform:translateX(20px);}
+.switch input:focus-visible + .slider{outline:2px solid var(--leaf-500);outline-offset:2px;}
+
+/* =========================================================
+   BEST CROPS FOR YOU — /feature/best-crops-for-you. Ranks crops by
+   combining a "grow fit" score (soil + climate) with a "profit" score
+   (market price/demand) so a high market price alone doesn't win if the
+   crop is a poor fit for the farmer's actual land.
+   ========================================================= */
+.locate-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:12px;border-radius:var(--radius-md);
+  background:var(--sky-200);color:#1B5E6B;border:none;font-weight:700;font-size:14px;
+  cursor:pointer;margin-bottom:10px;
+}
+.locate-btn:disabled{opacity:0.6;cursor:default;}
+.locate-status{font-size:12px;color:var(--text-soft);text-align:center;margin-bottom:6px;min-height:16px;}
+
+.rank-card{
+  background:var(--surface);border-radius:var(--radius-lg);padding:14px 16px;
+  box-shadow:var(--shadow-card);border:1px solid var(--border);margin-bottom:12px;
+}
+.rank-card .rc-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.rank-card .rc-medal{font-size:20px;width:26px;text-align:center;}
+.rank-card .rc-name{font-weight:800;font-size:15px;flex:1;}
+.rank-card .rc-price{font-size:12px;color:var(--text-soft);}
+.rank-card .rc-scores{display:flex;gap:8px;margin-bottom:8px;}
+.score-pill{
+  flex:1;border-radius:10px;padding:8px 10px;text-align:center;
+}
+.score-pill .sp-label{font-size:10px;font-weight:700;text-transform:uppercase;opacity:0.75;}
+.score-pill .sp-value{font-size:17px;font-weight:800;}
+.score-pill.grow{background:#E4F4E6;color:#1E7A3A;}
+.score-pill.profit{background:var(--gold-200);color:#8A5A00;}
+.score-pill.overall{background:var(--leaf-200);color:var(--leaf-900);}
+.rank-card .rc-note{font-size:12.5px;color:var(--text-soft);margin:0;}
+
+.warning-card{
+  background:#FBE7E4;border-radius:var(--radius-lg);padding:14px 16px;
+  border:1px solid #F0B4AB;margin-bottom:12px;
+}
+.warning-card .wc-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.warning-card .wc-name{font-weight:800;font-size:14px;color:#7A2E22;}
+.warning-card .wc-badge{
+  font-size:10px;font-weight:700;background:var(--alert-600);color:#fff;
+  padding:3px 8px;border-radius:10px;
+}
+.warning-card p{margin:0;font-size:12.5px;color:#7A2E22;}
+
+.full-rank-row{
+  display:flex;align-items:center;gap:10px;padding:10px 4px;
+  border-bottom:1px solid var(--border);font-size:13px;
+}
+.full-rank-row:last-child{border-bottom:none;}
+.full-rank-row .frr-rank{width:22px;font-weight:800;color:var(--text-soft);}
+.full-rank-row .frr-name{flex:1;font-weight:600;}
+.full-rank-row .frr-score{font-weight:800;color:var(--leaf-700);}
+
+/* =========================================================
+   FARM REMINDERS — /feature/reminders (static/js/reminders.js
+   holds the localStorage engine + alarm logic). Reuses .card/
+   .field/.chip/.btn from above; these are the reminder-specific
+   pieces: day-quick-select chips, reminder list rows, the swipe-
+   style done/delete actions, and the in-app alarm toast that
+   fires when Notification permission hasn't been granted.
+   ========================================================= */
+
+.day-chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.day-chip{
+  padding:8px 14px;border-radius:20px;font-size:13px;font-weight:700;
+  background:var(--surface-soft);color:var(--text-soft);border:1.5px solid var(--border);
+  cursor:pointer;transition:background-color .15s ease,color .15s ease,border-color .15s ease;
+}
+.day-chip.selected{background:var(--leaf-700);color:#fff;border-color:var(--leaf-700);}
+
+.reminder-item{
+  background:var(--surface);border-radius:var(--radius-lg);
+  padding:14px 16px;box-shadow:var(--shadow-card);border:1px solid var(--border);
+  margin-bottom:12px;display:flex;align-items:center;gap:12px;
+}
+.reminder-item .ri-icon{
+  width:42px;height:42px;border-radius:12px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  background:var(--gold-200);
+}
+.reminder-item.overdue .ri-icon{background:#FBE7E4;}
+.reminder-item .ri-body{flex:1;min-width:0;}
+.reminder-item .ri-task{font-weight:700;font-size:14px;color:var(--text);}
+.reminder-item .ri-crop{font-size:12px;color:var(--text-soft);margin-top:2px;}
+.reminder-item .ri-due{font-size:11px;font-weight:700;margin-top:4px;color:var(--gold-600);}
+.reminder-item.overdue .ri-due{color:var(--alert-600);}
+.reminder-item .ri-actions{display:flex;flex-direction:column;gap:6px;}
+.reminder-item .ri-actions button{
+  border:none;border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;
+  cursor:pointer;
+}
+.ri-actions .ri-done-btn{background:var(--leaf-200);color:var(--leaf-700);}
+.ri-actions .ri-delete-btn{background:transparent;color:var(--text-soft);}
+
+.notif-permission-banner{
+  background:var(--gold-200);border-radius:var(--radius-md);padding:14px 16px;
+  margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;
+}
+.notif-permission-banner p{margin:0;font-size:13px;color:#6B4A0F;flex:1;min-width:180px;}
+.notif-permission-banner button{
+  border:none;border-radius:10px;padding:10px 14px;font-size:12px;font-weight:700;
+  background:var(--leaf-700);color:#fff;cursor:pointer;white-space:nowrap;
+}
+
+/* Reminder badge dot — small red dot on the dashboard bell when
+   something is due/overdue */
+.bell-wrap{position:relative;display:inline-block;font-size:20px;}
+.reminder-badge-count{
+  position:absolute;top:-6px;right:-8px;min-width:16px;height:16px;padding:0 4px;
+  border-radius:999px;background:var(--alert-600);color:#fff;
+  font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;
+}
+
+/* In-app alarm toast — fires when a reminder becomes due while the app is
+   open but the browser Notification permission hasn't been granted (or
+   isn't supported), so the farmer still gets a visible + audible alert. */
+.alarm-toast{
+  position:fixed;left:16px;right:16px;bottom:90px;z-index:200;
+  background:var(--leaf-900);color:#fff;border-radius:var(--radius-md);
+  padding:14px 16px;box-shadow:var(--shadow-pop);
+  opacity:0;transform:translateY(12px);pointer-events:none;
+  transition:opacity .25s ease,transform .25s ease;
+}
+.alarm-toast.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+.alarm-toast-title{font-weight:800;font-size:14px;margin-bottom:2px;}
+.alarm-toast-body{font-size:13px;opacity:0.9;}

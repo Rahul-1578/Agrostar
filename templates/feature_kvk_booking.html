@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}KVK Expert Booking — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">KVK Expert Call Booking</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Jab AI chatbot kaafi na ho, to Krishi Vigyan Kendra (KVK) ke real expert se voice/video call book karein.</p>
+
+  <div class="field"><label>Filter by specialization</label>
+    <select id="kvkSpecFilter" onchange="loadExperts()"><option value="">All specializations</option></select>
+  </div>
+
+  <div id="expertsList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+
+  <div id="bookingForm"></div>
+
+  <div class="section-title">Your Bookings</div>
+  <div id="bookingsList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function loadExperts(){
+  const specialization = document.getElementById('kvkSpecFilter').value;
+  fetch('/api/kvk_experts' + (specialization ? '?specialization=' + encodeURIComponent(specialization) : ''))
+    .then(r=>r.json()).then(d=>{
+      if (document.getElementById('kvkSpecFilter').options.length <= 1){
+        document.getElementById('kvkSpecFilter').innerHTML = '<option value="">All specializations</option>' + d.specializations.map(s=>`<option>${s}</option>`).join('');
+      }
+      document.getElementById('expertsList').innerHTML = d.experts.map(e => `
+        <div class="card">
+          <div class="flex-between">
+            <div><b>👨‍🔬 ${e.name}</b><div class="muted" style="font-size:12px;">${e.specialization} • ${e.kvk_name}, ${e.location}</div></div>
+          </div>
+          ${e.slots.length ? `
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+              ${e.slots.map(s => `<span class="chip chip-stable" style="cursor:pointer;" onclick="showBookingForm(${e.id}, '${e.name.replace(/'/g,"")}', '${e.specialization}', '${e.kvk_name}', '${s}')">${s}</span>`).join('')}
+            </div>` : `<p class="muted" style="margin-top:8px;">Abhi koi slot available nahi hai.</p>`}
+        </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Is specialization ke liye koi expert nahi mila.</p></div>';
+    });
+}
+
+function showBookingForm(expertId, name, specialization, kvkName, slot){
+  document.getElementById('bookingForm').innerHTML = `
+    <div class="card" style="border:2px solid var(--gold-500);">
+      <div class="card-title">📞 Book with ${name}</div>
+      <p class="muted mt-0">${specialization} • ${kvkName} • Slot: <b>${slot}</b></p>
+      <div class="field"><label>Apna sawaal / topic</label><input type="text" id="kvkTopic" placeholder="e.g. Rice me pest ka problem"></div>
+      <div class="field"><label>Aapka contact number</label><input type="tel" id="kvkContact" placeholder="+91 90000 00000"></div>
+      <button class="btn btn-primary" onclick="confirmBooking(${expertId}, '${slot}')">Confirm Booking</button>
+    </div>`;
+  document.getElementById('bookingForm').scrollIntoView({behavior:'smooth'});
+}
+
+function confirmBooking(expertId, slot){
+  const topic = document.getElementById('kvkTopic').value.trim();
+  const contact = document.getElementById('kvkContact').value.trim();
+  if (!topic) { document.getElementById('kvkTopic').focus(); return; }
+  fetch('/api/kvk_booking', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({expert_id: expertId, slot, topic, contact})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'booked'){
+        document.getElementById('bookingForm').innerHTML = `<div class="card"><p class="mt-0">✅ Call booked for <b>${d.booking.slot}</b> with ${d.booking.expert_name}!</p></div>`;
+        loadExperts();
+        loadBookings();
+      } else {
+        document.getElementById('bookingForm').innerHTML = `<div class="card"><p class="mt-0" style="color:var(--alert-600);">${d.message}</p></div>`;
+      }
+    });
+}
+
+function loadBookings(){
+  fetch('/api/kvk_bookings').then(r=>r.json()).then(d=>{
+    if (!d.bookings.length){
+      document.getElementById('bookingsList').innerHTML = '<div class="card center"><p class="mt-0 muted">Aapne abhi tak koi call book nahi ki hai.</p></div>';
+      return;
+    }
+    document.getElementById('bookingsList').innerHTML = d.bookings.map(b => `
+      <div class="card">
+        <div class="flex-between">
+          <div><b>${b.expert_name}</b><div class="muted" style="font-size:12px;">${b.specialization} • ${b.kvk_name}</div></div>
+          <span class="chip chip-up">${b.slot}</span>
+        </div>
+        <p class="mt-0" style="margin-top:8px;font-size:13px;">📝 ${b.topic}</p>
+      </div>`).join('');
+  });
+}
+
+loadExperts();
+loadBookings();
+</script>
+{% endblock %}

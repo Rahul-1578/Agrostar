@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Climate Adaptation — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_climate">Climate Adaptation</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body" id="content">
+  <div class="skeleton skeleton-line short"></div>
+  <div class="skeleton skeleton-block" style="margin-top:10px;"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function loadClimateTips(){
+  fetch('/api/climate_adaptation?lang=' + getCurrentLang()).then(r=>r.json()).then(d=>{
+    document.getElementById('content').innerHTML = `
+      <div class="card">
+        <div class="card-title">🌍 ${d.season} ${t('sec_season_tips')}</div>
+        <ul style="padding-left:18px;margin:0;line-height:2;">
+          ${d.tips.map(tip=>`<li>${tip}</li>`).join('')}
+        </ul>
+      </div>`;
+  });
+}
+loadClimateTips();
+document.addEventListener('agrostar:langchange', loadClimateTips);
+</script>
+{% endblock %}

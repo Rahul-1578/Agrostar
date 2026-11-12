@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Farmer Reels — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Farmer Reels</h1>
+  <button class="btn-sm btn btn-primary" onclick="showUploadForm()">➕ Upload</button>
+</div>
+<div class="page-body">
+  <p class="muted">Kisan khud apni tips aur success story ke chhote (30-60 sec) video share karte hain — sirf dekhein nahi, khud bhi bhejein.</p>
+
+  <div id="uploadForm" style="display:none;">
+    <div class="card" style="border:2px solid var(--gold-500);">
+      <div class="card-title">🎬 Upload a Reel</div>
+      <div class="field"><label>Caption</label><input type="text" id="reelCaption" placeholder="e.g. Vermicompost banane ka aasan tarika"></div>
+      <div class="field"><label>Category</label>
+        <select id="reelCropTag">
+          <option>Soil</option><option>Water</option><option>Pest Control</option>
+          <option>Fertilizer</option><option>Harvest</option><option>Govt Schemes</option><option>General</option>
+        </select>
+      </div>
+      <div class="field"><label>Video (30-60 sec, max 60MB)</label><input type="file" id="reelVideoFile" accept="video/mp4,video/webm,video/quicktime"></div>
+      <button class="btn btn-primary" onclick="uploadReel()">Upload</button>
+      <p class="muted" id="uploadStatus" style="margin-top:8px;"></p>
+    </div>
+  </div>
+
+  <div id="reelCategoryChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
+  <div id="reelsFeed"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let reelActiveTag = '';
+
+function showUploadForm(){
+  const form = document.getElementById('uploadForm');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  form.scrollIntoView({behavior:'smooth'});
+}
+
+function loadReels(){
+  fetch('/api/reels' + (reelActiveTag ? '?crop_tag=' + encodeURIComponent(reelActiveTag) : ''))
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('reelCategoryChips').innerHTML = ['All', ...d.crop_tags].map(c => `
+        <span class="chip ${((c==='All' && !reelActiveTag) || c===reelActiveTag) ? 'chip-up' : 'chip-stable'}" style="cursor:pointer;" onclick="reelActiveTag='${c==='All'?'':c}';loadReels();">${c}</span>`).join('');
+
+      document.getElementById('reelsFeed').innerHTML = d.reels.map(r => `
+        <div class="card">
+          <div class="flex-between">
+            <div><b>👤 ${r.farmer}</b><div class="muted" style="font-size:12px;">${r.posted}</div></div>
+            <span class="chip chip-stable">${r.crop_tag}</span>
+          </div>
+          ${r.video_url ? `
+            <video controls preload="metadata" style="width:100%;border-radius:10px;margin-top:10px;max-height:320px;background:#000;" onplay="trackReelView(${r.id})">
+              <source src="${r.video_url}">
+            </video>` : `
+            <div style="width:100%;height:160px;border-radius:10px;margin-top:10px;background:linear-gradient(135deg,var(--leaf-500),var(--gold-500));display:flex;align-items:center;justify-content:center;font-size:40px;">🎬</div>
+          `}
+          <p class="mt-0" style="margin-top:10px;">${r.caption}</p>
+          <div class="flex-between" style="margin-top:8px;">
+            <button class="ri-delete-btn" style="color:var(--leaf-700);" onclick="likeReel(${r.id}, this)">❤️ <span id="likeCount${r.id}">${r.likes}</span></button>
+            <span class="muted" style="font-size:12px;">👁️ ${r.views} views</span>
+          </div>
+        </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Is category me abhi koi reel nahi hai.</p></div>';
+    });
+}
+
+function likeReel(reelId, btn){
+  fetch('/api/reel_like', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({reel_id: reelId})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('likeCount' + reelId).textContent = d.likes;
+    });
+}
+
+function trackReelView(reelId){
+  fetch('/api/reel_view', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({reel_id: reelId})});
+}
+
+function uploadReel(){
+  const caption = document.getElementById('reelCaption').value.trim();
+  const crop_tag = document.getElementById('reelCropTag').value;
+  const fileInput = document.getElementById('reelVideoFile');
+  const statusEl = document.getElementById('uploadStatus');
+
+  if (!caption) { document.getElementById('reelCaption').focus(); return; }
+  if (!fileInput.files.length) { statusEl.textContent = 'Video file chunein.'; return; }
+
+  const formData = new FormData();
+  formData.append('caption', caption);
+  formData.append('crop_tag', crop_tag);
+  formData.append('video', fileInput.files[0]);
+
+  statusEl.textContent = 'Uploading...';
+  fetch('/api/reel_upload', {method:'POST', body: formData})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'uploaded'){
+        statusEl.textContent = '✅ Uploaded!';
+        document.getElementById('reelCaption').value = '';
+        fileInput.value = '';
+        document.getElementById('uploadForm').style.display = 'none';
+        loadReels();
+      } else {
+        statusEl.textContent = d.message || 'Upload failed.';
+      }
+    })
+    .catch(() => { statusEl.textContent = 'Upload failed — try a smaller video.'; });
+}
+
+loadReels();
+</script>
+{% endblock %}

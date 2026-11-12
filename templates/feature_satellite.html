@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Satellite Crop Health — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_satellite">Satellite Crop Health</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body" id="content">
+  <div class="card">
+    <div class="skeleton skeleton-line" style="height:24px;width:60%;margin:0 auto 10px;"></div>
+    <div class="skeleton skeleton-line" style="height:10px;margin-top:10px;"></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+fetch('/api/satellite_health').then(r=>r.json()).then(d=>{
+  const pos = Math.min(Math.max(d.field_ndvi, 0), 1) * 100;
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="flex-between">
+        <div class="card-title">🛰️ ${t('card_field_ndvi')}</div>
+        <span class="chip chip-${d.health_status==='Excellent'?'up':d.health_status==='Good'?'stable':'down'}">${d.health_status}</span>
+      </div>
+      <div style="font-family:var(--font-display);font-size:30px;color:var(--leaf-700);">${d.field_ndvi}</div>
+      <div class="ndvi-gauge"><div class="ndvi-marker" style="left:${pos}%;"></div></div>
+      <div class="flex-between muted" style="font-size:11px;"><span>${t('txt_stressed')}</span><span>${t('txt_healthy')}</span></div>
+      <p class="muted" style="margin-top:10px;">${t('txt_captured')} ${d.captured} ${t('txt_via')} ${d.source}</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📍 ${t('card_zone_breakdown')}</div>
+      ${d.zones.map(z=>`
+        <div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border);">
+          <span>${z.zone}</span><b>${z.ndvi}</b>
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-title">💡 ${t('card_insight')}</div>
+      <p class="mt-0">${d.insight}</p>
+    </div>
+  `;
+});
+</script>
+{% endblock %}

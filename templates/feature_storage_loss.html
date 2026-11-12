@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Storage Loss Calculator — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Post-Harvest Storage Loss Calculator</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Galat storage se kitna anaaj (aur paisa) waste ho raha hai — aur behtar storage se kitna bach sakta hai, dekhein.</p>
+
+  <div class="card">
+    <div class="field"><label>Crop</label>
+      <select id="slCrop" onchange="calcStorageLoss()"><option>Rice</option><option>Wheat</option><option>Maize</option><option>Groundnut</option></select>
+    </div>
+    <div class="field"><label>Quantity stored (quintal)</label><input type="number" id="slQuantity" value="20" min="1" step="0.5" onchange="calcStorageLoss()"></div>
+    <div class="field"><label>Market price (₹/quintal)</label><input type="number" id="slPrice" value="2000" min="1" onchange="calcStorageLoss()"></div>
+    <div class="field"><label>Your current storage method</label>
+      <select id="slMethod" onchange="calcStorageLoss()"></select>
+    </div>
+  </div>
+
+  <div id="storageLossResult"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function calcStorageLoss(){
+  const crop = document.getElementById('slCrop').value;
+  const quantity_quintal = document.getElementById('slQuantity').value;
+  const price_per_quintal = document.getElementById('slPrice').value;
+  const current_method = document.getElementById('slMethod').value;
+
+  fetch('/api/storage_loss_calculator', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, quantity_quintal, price_per_quintal, current_method})})
+    .then(r=>r.json()).then(d=>{
+      if (document.getElementById('slMethod').options.length === 0){
+        document.getElementById('slMethod').innerHTML = d.methods_available.map(m => `<option value="${m}" ${m===d.current_method?'selected':''}>${m}</option>`).join('');
+      }
+      document.getElementById('storageLossResult').innerHTML = `
+        <div class="card" style="border:2px solid var(--alert-600);">
+          <div class="card-title" style="color:var(--alert-600);">📉 Your Current Loss</div>
+          <div class="flex-between" style="margin-top:6px;"><span class="muted">Method</span><b>${d.current_method}</b></div>
+          <div class="flex-between" style="margin-top:6px;"><span class="muted">Loss</span><b>${d.current_loss_quintal} quintal</b></div>
+          <div class="flex-between" style="margin-top:6px;"><span class="muted">Value lost</span><b style="color:var(--alert-600);">₹${d.current_loss_value.toLocaleString('en-IN')}</b></div>
+        </div>
+        <div class="section-title">Compare Storage Methods</div>
+        ${d.comparisons.map(c => `
+          <div class="card ${c.is_current ? '' : 'flex-between'}" ${!c.is_current && c.savings_vs_current > 0 ? 'style="border:2px solid var(--gold-500);"' : ''}>
+            <div>
+              <b>${c.method}</b> ${c.is_current ? '<span class="chip chip-stable">Current</span>' : ''}
+              <div class="muted" style="font-size:12px;">${c.loss_percent}% loss (${c.loss_quintal} quintal — ₹${c.loss_value.toLocaleString('en-IN')})</div>
+            </div>
+            ${!c.is_current && c.savings_vs_current > 0 ? `<b style="color:var(--leaf-700);">Save ₹${c.savings_vs_current.toLocaleString('en-IN')}</b>` : ''}
+          </div>`).join('')}`;
+    });
+}
+
+calcStorageLoss();
+</script>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Group Selling — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">FPO / Group Selling</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Akele bechne se zyada, saath milkar bulk me bechne par behtar bhaav milta hai. Ek pool join karein ya naya banayein.</p>
+
+  <div class="field" style="margin-bottom:6px;"><input type="text" id="gsFilter" placeholder="Filter by crop (e.g. Rice)" oninput="loadPools()"></div>
+  <div id="poolList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">➕ Start a New Group</div>
+    <div class="field"><label>Crop</label>
+      <select id="gsCrop">
+        <option>Rice</option><option>Wheat</option><option>Maize</option><option>Onion</option>
+        <option>Groundnut</option><option>Cotton</option><option>Tomato</option><option>Sugarcane</option>
+      </select>
+    </div>
+    <div class="field"><label>Target quantity (quintal)</label><input type="number" id="gsTarget" min="1" placeholder="e.g. 150"></div>
+    <div class="field"><label>Your quantity (quintal)</label><input type="number" id="gsMine" min="1" placeholder="e.g. 30"></div>
+    <div class="field"><label>Location</label><select id="gsLoc"></select></div>
+    <button class="btn btn-primary" onclick="createPool()">Create Group</button>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateGsLoc(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('gsLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+  });
+}
+
+function loadPools(){
+  const crop = document.getElementById('gsFilter').value.trim();
+  fetch('/api/group_selling_pools' + (crop ? '?crop=' + encodeURIComponent(crop) : ''))
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('poolList').innerHTML = d.pools.map(p => `
+        <div class="card">
+          <div class="flex-between">
+            <div>
+              <b>🌾 ${p.crop}</b>
+              <div class="muted" style="font-size:12px;">📍 ${p.location} • ${p.members.length} farmers joined</div>
+            </div>
+            <span class="chip ${p.status==='Ready to Sell' ? 'chip-up' : 'chip-stable'}">${p.status}</span>
+          </div>
+          <div style="margin:10px 0 4px;background:var(--leaf-200,#e4f4e6);border-radius:8px;height:10px;overflow:hidden;">
+            <div style="width:${p.percent_filled}%;background:var(--leaf-500);height:100%;"></div>
+          </div>
+          <div class="muted" style="font-size:12px;">${p.current_quintal} / ${p.target_quintal} quintal filled (${p.percent_filled}%)</div>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Solo mandi price</span><span>₹${p.solo_price}/quintal</span>
+          </div>
+          <div class="flex-between">
+            <span class="muted">Pooled bulk price</span><b style="color:var(--leaf-700);">₹${p.pooled_price}/quintal</b>
+          </div>
+          ${p.days_left > 0 ? `
+          <div class="field" style="margin-top:10px;">
+            <input type="number" id="joinQty${p.id}" placeholder="Your quantity (quintal)" min="1">
+          </div>
+          <button class="btn btn-gold btn-sm" onclick="joinPool(${p.id})">Join This Group</button>
+          ` : `<p class="muted" style="margin-top:8px;">✅ Target reached — ready for bulk sale.</p>`}
+        </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Is crop ke liye abhi koi group nahi hai — neeche naya banayein.</p></div>';
+    });
+}
+
+function joinPool(poolId){
+  const qtyEl = document.getElementById('joinQty' + poolId);
+  const quantity_quintal = qtyEl.value;
+  if (!quantity_quintal) { qtyEl.focus(); return; }
+  fetch('/api/group_selling_join', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({pool_id: poolId, quantity_quintal})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'joined') loadPools();
+    });
+}
+
+function createPool(){
+  const crop = document.getElementById('gsCrop').value;
+  const target_quintal = document.getElementById('gsTarget').value;
+  const quantity_quintal = document.getElementById('gsMine').value;
+  const location = document.getElementById('gsLoc').value;
+  if (!target_quintal || !quantity_quintal) return;
+  fetch('/api/group_selling_create', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, target_quintal, quantity_quintal, location})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'created'){
+        document.getElementById('gsTarget').value = '';
+        document.getElementById('gsMine').value = '';
+        loadPools();
+      }
+    });
+}
+
+populateGsLoc();
+loadPools();
+</script>
+{% endblock %}

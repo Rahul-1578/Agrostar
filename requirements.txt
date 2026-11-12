@@ -1,0 +1,17 @@
+Flask==3.0.3
+requests==2.32.3
+python-dotenv==1.2.2
+gunicorn==22.0.0
+Pillow>=11.0
+google-auth==2.35.0
+pytesseract==0.3.13
+# pytesseract also requires the tesseract-ocr system binary:
+#   Ubuntu/Debian: apt-get install tesseract-ocr
+#   Without it, /api/scan_receipt still works — it just returns
+#   ocr_available:false and the farmer fills the amount manually.
+
+# Optional — only needed for REAL push notifications (price/weather/disease
+# alerts). Without it, /api/push_* routes still work in demo mode (they
+# store subscriptions and log a notification history, just don't actually
+# deliver a browser push). Install with: pip install pywebpush
+# pywebpush==2.0.0

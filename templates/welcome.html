@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}AgroStar — Sow Smart, Reap Big{% endblock %}
+{% block shell_class %}no-nav{% endblock %}
+{% block extra_head %}
+{% if firebase_config.apiKey %}
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="welcome-hero">
+  <div class="welcome-top">
+    <div class="welcome-logo">A</div>
+    <h1>AgroStar</h1>
+    <p class="welcome-tagline" data-i18n="welcome_tagline">Sow Smart, Reap Big</p>
+  </div>
+
+  <div class="welcome-illustration">
+    <svg width="220" height="140" viewBox="0 0 220 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="110" cy="128" rx="100" ry="10" fill="#CDE6D3"/>
+      <path d="M60 128 C60 90 75 60 70 30" stroke="#2D5F3E" stroke-width="6" stroke-linecap="round"/>
+      <path d="M70 55 C90 45 100 55 95 68 C82 70 72 66 70 55Z" fill="#4C8C5E"/>
+      <path d="M65 80 C45 75 40 88 50 98 C63 96 68 88 65 80Z" fill="#4C8C5E"/>
+      <path d="M120 128 C120 95 108 70 112 40" stroke="#2D5F3E" stroke-width="6" stroke-linecap="round"/>
+      <path d="M112 62 C130 55 138 68 130 78 C118 78 110 70 112 62Z" fill="#F0A83D"/>
+      <path d="M108 95 C90 92 86 104 96 112 C108 110 112 102 108 95Z" fill="#4C8C5E"/>
+      <path d="M160 128 C160 100 150 78 154 50" stroke="#2D5F3E" stroke-width="6" stroke-linecap="round"/>
+      <path d="M154 68 C170 62 178 74 170 84 C158 84 152 76 154 68Z" fill="#4C8C5E"/>
+      <circle cx="185" cy="24" r="14" fill="#F0A83D" opacity="0.85"/>
+    </svg>
+  </div>
+
+  <div class="quote-strip" id="quoteStrip"></div>
+
+  <div class="welcome-actions">
+
+    <!-- Signup form -->
+    <div id="signupForm" style="display:none;">
+      <div class="field"><input type="text" id="signupName" placeholder="Your name"></div>
+      <div class="field"><input type="tel" id="signupPhone" placeholder="Mobile number" maxlength="10"></div>
+      <div class="field"><input type="password" id="signupPassword" placeholder="Create a password"></div>
+      <button class="btn btn-primary" onclick="submitSignup()">Create Account</button>
+      <button class="btn btn-ghost" onclick="showButtons()" style="margin-top:6px;">Cancel</button>
+      <p class="muted" id="signupError" style="margin-top:8px;color:var(--alert-600);"></p>
+    </div>
+
+    <!-- Login: password or OTP tabs -->
+    <div id="loginForm" style="display:none;">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabPassword" onclick="switchLoginTab('password')">Password</button>
+        <button class="auth-tab" id="tabOtp" onclick="switchLoginTab('otp')">OTP</button>
+      </div>
+
+      <div id="passwordLogin">
+        <div class="field"><input type="tel" id="loginPhone" placeholder="Mobile number" maxlength="10"></div>
+        <div class="field"><input type="password" id="loginPassword" placeholder="Password"></div>
+        <button class="btn btn-primary" onclick="submitPasswordLogin()">Log In</button>
+      </div>
+
+      <div id="otpLogin" style="display:none;">
+        <div class="field"><input type="tel" id="otpPhone" placeholder="Mobile number" maxlength="10"></div>
+        <button class="btn btn-outline" id="sendOtpBtn" onclick="sendOtp()">Send OTP</button>
+
+        <div id="otpEntry" style="display:none;margin-top:12px;">
+          <div class="otp-demo-note" id="otpDemoNote"></div>
+          <div class="field"><input type="text" id="otpCode" placeholder="4-digit OTP" maxlength="4" inputmode="numeric"></div>
+          <button class="btn btn-primary" onclick="submitOtpLogin()">Verify &amp; Log In</button>
+          <button class="btn btn-ghost" style="margin-top:6px;" onclick="sendOtp()">Resend OTP</button>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost" onclick="showButtons()" style="margin-top:6px;">Cancel</button>
+      <p class="muted" id="loginError" style="margin-top:8px;color:var(--alert-600);"></p>
+    </div>
+
+    <!-- Default buttons -->
+    <div id="authButtons">
+      {% if firebase_config.apiKey %}
+      <button class="btn btn-google" id="googleSignInBtn" onclick="signInWithGoogle()">
+        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/>
+          <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/>
+          <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/>
+        </svg>
+        <span data-i18n="welcome_google">Continue with Google</span>
+      </button>
+      <div class="auth-divider"><span data-i18n="welcome_or">or</span></div>
+      <p class="muted" id="googleError" style="margin-top:-6px;margin-bottom:8px;color:var(--alert-600);"></p>
+      {% endif %}
+      <button class="btn btn-primary" onclick="showLoginForm()" data-i18n="welcome_login">Log In</button>
+      <div class="signup-row" style="margin-top:12px;">
+        <button class="btn btn-outline" onclick="showSignupForm()" data-i18n="welcome_signup">Sign Up</button>
+        <button class="btn btn-gold" onclick="handleGuest()" data-i18n="welcome_guest">Continue as Guest</button>
+      </div>
+    </div>
+
+    <div class="lang-pill">
+      🌐
+      <select id="langSwitcher" onchange="setLang(this.value)" style="border:none;background:transparent;font-size:12px;font-weight:600;color:var(--text-soft);">
+        <option value="en">English</option>
+        <option value="hi">हिंदी (Hindi)</option>
+        <option value="or">ଓଡ଼ିଆ (Odia)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="help-strip" onclick="showInfo('help')">
+    <span data-i18n="welcome_help_strip">📞 App na chale? Call ya WhatsApp karo — humesha madad milegi</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('langSwitcher').value = getCurrentLang();
+</script>
+{% if firebase_config.apiKey %}
+<script>
+// Firebase config is not a secret (it's public in every Firebase web app —
+// it just identifies the project; access is controlled server-side by the
+// token verification in /api/login_google), so it's fine to render it
+// straight from the server here.
+firebase.initializeApp({{ firebase_config | tojson }});
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+// Without this, Google skips the account picker and silently reuses
+// whichever Google account is already signed in on the device/browser —
+// setting select_account forces the "choose an account" screen every time.
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+function signInWithGoogle(){
+  const btn = document.getElementById('googleSignInBtn');
+  const errEl = document.getElementById('googleError');
+  errEl.textContent = '';
+  btn.disabled = true;
+
+  firebase.auth().signInWithPopup(googleProvider)
+    .then(result => result.user.getIdToken())
+    .then(idToken => fetch('/api/login_google', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({idToken})
+    }))
+    .then(r => r.json().then(d => ({ok: r.ok, d})))
+    .then(({ok, d}) => {
+      if (ok && d.redirect) { window.location.href = d.redirect; }
+      else { errEl.textContent = d.message || 'Google sign-in failed'; btn.disabled = false; }
+    })
+    .catch(err => {
+      console.error('Google sign-in error:', err);
+      // Common case: user closed the Google popup — not a real error.
+      if (err && err.code !== 'auth/popup-closed-by-user') {
+        // Show the real Firebase error code on-screen so it's debuggable
+        // without opening devtools (e.g. auth/unauthorized-domain,
+        // auth/popup-blocked, auth/network-request-failed).
+        errEl.textContent = 'Google sign-in failed' + (err.code ? ' (' + err.code + ')' : '') + ' — try again';
+      }
+      btn.disabled = false;
+    });
+}
+</script>
+{% endif %}
+<script>
+function showButtons(){
+  document.getElementById('signupForm').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('authButtons').style.display = 'block';
+}
+function showSignupForm(){
+  document.getElementById('authButtons').style.display = 'none';
+  document.getElementById('signupForm').style.display = 'block';
+}
+function showLoginForm(){
+  document.getElementById('authButtons').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'block';
+}
+
+function switchLoginTab(mode){
+  const isPassword = mode === 'password';
+  document.getElementById('tabPassword').classList.toggle('active', isPassword);
+  document.getElementById('tabOtp').classList.toggle('active', !isPassword);
+  document.getElementById('passwordLogin').style.display = isPassword ? 'block' : 'none';
+  document.getElementById('otpLogin').style.display = isPassword ? 'none' : 'block';
+  document.getElementById('loginError').textContent = '';
+}
+
+function submitSignup(){
+  const name = document.getElementById('signupName').value.trim();
+  const phone = document.getElementById('signupPhone').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  document.getElementById('signupError').textContent = '';
+
+  fetch('/api/signup', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, phone, password})
+  }).then(r => r.json().then(d => ({ok: r.ok, d}))).then(({ok, d}) => {
+    if (ok && d.redirect) { window.location.href = d.redirect; }
+    else { document.getElementById('signupError').textContent = d.message || 'Something went wrong'; }
+  });
+}
+
+function submitPasswordLogin(){
+  const phone = document.getElementById('loginPhone').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  document.getElementById('loginError').textContent = '';
+
+  fetch('/api/login_password', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({phone, password})
+  }).then(r => r.json().then(d => ({ok: r.ok, d}))).then(({ok, d}) => {
+    if (ok && d.redirect) { window.location.href = d.redirect; }
+    else { document.getElementById('loginError').textContent = d.message || 'Login failed'; }
+  });
+}
+
+function sendOtp(){
+  const phone = document.getElementById('otpPhone').value.trim();
+  document.getElementById('loginError').textContent = '';
+  if (phone.length < 10) {
+    document.getElementById('loginError').textContent = 'Enter a valid 10-digit number';
+    return;
+  }
+  const btn = document.getElementById('sendOtpBtn');
+  btn.textContent = 'Sending…';
+  fetch('/api/send_otp', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({phone})
+  }).then(r => r.json()).then(d => {
+    btn.textContent = 'Resend OTP';
+    if (d.status === 'sent') {
+      document.getElementById('otpEntry').style.display = 'block';
+      const noteEl = document.getElementById('otpDemoNote');
+      if (d.demo_mode) {
+        noteEl.style.display = 'block';
+        noteEl.textContent = '📱 Demo mode (no SMS gateway connected): your OTP is ' + d.otp_demo + '. In production this arrives by real SMS.';
+      } else {
+        noteEl.style.display = 'block';
+        noteEl.textContent = '✅ OTP sent by SMS to your phone. Check your messages.';
+      }
+    } else {
+      document.getElementById('loginError').textContent = d.message || 'Could not send OTP';
+    }
+  });
+}
+
+function submitOtpLogin(){
+  const phone = document.getElementById('otpPhone').value.trim();
+  const otp = document.getElementById('otpCode').value.trim();
+  document.getElementById('loginError').textContent = '';
+
+  fetch('/api/verify_otp', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({phone, otp})
+  }).then(r => r.json().then(d => ({ok: r.ok, d}))).then(({ok, d}) => {
+    if (ok && d.redirect) { window.location.href = d.redirect; }
+    else { document.getElementById('loginError').textContent = d.message || 'Verification failed'; }
+  });
+}
+
+function handleGuest(){
+  fetch('/guest').then(r=>r.json()).then(d=>{ if(d.redirect) window.location.href = d.redirect; });
+}
+
+// Two rotating motivational quotes for farmers — shown one at a time,
+// swapping every 6 seconds, so the welcome screen feels warm, not just
+// transactional (login/signup).
+const FARMER_QUOTES = {
+  en: [
+    { text: "The farmer is the only man in our economy who buys everything at retail, sells everything at wholesale, and pays the freight both ways — let's change those odds together.", author: "— Every season, a new chance to grow smarter" },
+    { text: "A good farmer is nothing more nor less than a handy man with a sense of ecology on his farm.", author: "— Your knowledge + our data = better harvests" },
+  ],
+  hi: [
+    { text: "किसान वो हाथ है जो मिट्टी में उम्मीद बोता है और फसल में सपना काटता है — हम बस उस उम्मीद को थोड़ा और मजबूत बनाना चाहते हैं।", author: "— हर मौसम, समझदारी से उगाने का एक नया मौका" },
+    { text: "मेहनत खेत में है, समझदारी अब आपकी जेब में — साथ मिलकर हर फसल को बेहतर बनाएं।", author: "— आपका अनुभव + हमारा डेटा = बेहतर पैदावार" },
+  ],
+  or: [
+    { text: "କୃଷକ ହେଉଛନ୍ତି ସେହି ହାତ ଯିଏ ମାଟିରେ ଆଶା ବୁଣନ୍ତି ଏବଂ ଫସଲରେ ସ୍ୱପ୍ନ କାଟନ୍ତି — ଆମେ ସେହି ଆଶାକୁ ଆହୁରି ଦୃଢ଼ କରିବାକୁ ଚାହୁଁଛୁ।", author: "— ପ୍ରତି ଋତୁ, ସ୍ମାର୍ଟ ଚାଷ ପାଇଁ ଏକ ନୂଆ ସୁଯୋଗ" },
+    { text: "ପରିଶ୍ରମ ଖେତରେ, ବୁଦ୍ଧିମତା ଏବେ ଆପଣଙ୍କ ପକେଟରେ — ମିଶି ପ୍ରତ୍ୟେକ ଫସଲକୁ ଉନ୍ନତ କରନ୍ତୁ।", author: "— ଆପଣଙ୍କ ଅଭିଜ୍ଞତା + ଆମର ତଥ୍ୟ = ଉନ୍ନତ ଅମଳ" },
+  ],
+};
+
+function renderQuoteStrip(){
+  const lang = localStorage.getItem('agrostar_lang') || 'en';
+  const quotes = FARMER_QUOTES[lang] || FARMER_QUOTES.en;
+  let idx = 0;
+  const strip = document.getElementById('quoteStrip');
+  function show(i){
+    strip.style.opacity = '0';
+    setTimeout(() => {
+      strip.innerHTML = `"${quotes[i].text}"<span class="quote-author">${quotes[i].author}</span>`;
+      strip.style.opacity = '1';
+    }, 300);
+  }
+  show(idx);
+  const rotateTimer = setInterval(() => { idx = (idx + 1) % quotes.length; show(idx); }, 6000);
+  return rotateTimer;
+}
+let quoteTimer = renderQuoteStrip();
+document.addEventListener('agrostar:langchange', () => {
+  clearInterval(quoteTimer);
+  quoteTimer = renderQuoteStrip();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Yield Benchmarking — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Crop Yield Benchmarking</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Apni yield ko area ke average kisan se compare karein — dekhein aap kaha khade hain.</p>
+
+  <div class="card">
+    <div class="field"><label>Crop</label><select id="ybCrop"></select></div>
+    <div class="field"><label>Your yield (quintal per acre)</label><input type="number" id="ybYield" min="0" step="0.1" placeholder="e.g. 22"></div>
+    <button class="btn btn-primary" onclick="checkBenchmark()">Compare My Yield</button>
+  </div>
+
+  <div id="benchmarkResult"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const TIER_LABELS = {
+  top_10: { icon: '🏆', color: 'var(--leaf-700)' },
+  above_average: { icon: '📈', color: 'var(--leaf-700)' },
+  average: { icon: '➖', color: 'var(--gold-600)' },
+  below_average: { icon: '📉', color: 'var(--alert-600)' },
+};
+
+function populateYbCrop(){
+  fetch('/api/yield_benchmark', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({crop: 'Rice', my_yield_quintal_per_acre: 0})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('ybCrop').innerHTML = d.crops_available.map(c=>`<option>${c}</option>`).join('');
+    });
+}
+
+function checkBenchmark(){
+  const crop = document.getElementById('ybCrop').value;
+  const my_yield_quintal_per_acre = document.getElementById('ybYield').value;
+  if (!my_yield_quintal_per_acre) { document.getElementById('ybYield').focus(); return; }
+
+  fetch('/api/yield_benchmark', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, my_yield_quintal_per_acre})})
+    .then(r=>r.json()).then(d=>{
+      const lbl = TIER_LABELS[d.tier] || TIER_LABELS.average;
+      document.getElementById('benchmarkResult').innerHTML = `
+        <div class="card">
+          <div class="card-title" style="color:${lbl.color};">${lbl.icon} ${d.message}</div>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Your yield</span><b>${d.my_yield_quintal_per_acre} q/acre</b>
+          </div>
+          <div class="flex-between" style="margin-top:6px;">
+            <span class="muted">Area average</span><b>${d.area_average_quintal_per_acre} q/acre</b>
+          </div>
+          <div class="flex-between" style="margin-top:6px;">
+            <span class="muted">Top 10% farmers</span><b>${d.top_10_percent_quintal_per_acre} q/acre</b>
+          </div>
+          <div class="flex-between" style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;">
+            <span class="muted">Difference vs average</span>
+            <b style="color:${d.delta_vs_average >= 0 ? 'var(--leaf-700)' : 'var(--alert-600)'};">${d.delta_vs_average >= 0 ? '+' : ''}${d.delta_vs_average} q/acre</b>
+          </div>
+          <a href="https://wa.me/?text=${encodeURIComponent('🏆 AgroStar Yield Benchmark\\nCrop: ' + d.crop + '\\nMy yield: ' + d.my_yield_quintal_per_acre + ' q/acre\\nArea average: ' + d.area_average_quintal_per_acre + ' q/acre\\n' + d.message)}" target="_blank" class="btn-sm btn btn-outline" style="margin-top:10px;display:inline-block;text-decoration:none;">📱 Share on WhatsApp</a>
+        </div>
+        ${d.improvement_tip ? `<div class="card"><div class="card-title">💡 Tip to Close the Gap</div><p class="mt-0">${d.improvement_tip}</p></div>` : ''}`;
+    });
+}
+
+populateYbCrop();
+</script>
+{% endblock %}

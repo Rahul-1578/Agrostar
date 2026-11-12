@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Post-Harvest Quality Grading — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:16px;" data-i18n="hdr_postharvest_quality">Quality Grading Unit</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+
+  <div class="card">
+    <div class="flex-between">
+      <div class="card-title" style="margin-bottom:0;">🍅 <span data-i18n="pq_calibrated_for">Calibrated for</span>: Tomato</div>
+      <span class="chip chip-stable">v1 unit</span>
+    </div>
+    <p class="muted mt-0" style="margin-top:8px;" data-i18n="pq_intro">
+      Simulates the affordable grading unit's workflow: capture a photo, read live sensors, and generate an instant grade, shelf-life estimate, and traceable report — the same API a real Raspberry Pi/ESP32 unit in a pack-house would call.
+    </p>
+  </div>
+
+  <div class="section-title" data-i18n="pq_step1_title">Step 1 — Capture produce photo</div>
+  <div class="card center">
+    <div id="imgPreview" style="width:100%;height:150px;border-radius:var(--radius-md);
+      background:var(--surface-soft);display:flex;align-items:center;justify-content:center;
+      font-size:38px;color:var(--text-soft);margin-bottom:12px;overflow:hidden;">📷</div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;" onchange="previewImage(event)">
+    <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()" data-i18n="pq_upload_btn">Upload / Capture Photo</button>
+    <p class="muted" style="margin-top:8px;font-size:11px;" data-i18n="pq_upload_note">Optional in this demo — analysis works with sensor data alone too.</p>
+  </div>
+
+  <div class="section-title" data-i18n="pq_step2_title">Step 2 — Read live sensors</div>
+  <div class="card">
+    <div id="sensorGrid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div class="center"><div class="muted" style="font-size:11px;" data-i18n="pq_temp">Temp</div><div id="tempVal" style="font-family:var(--font-display);font-size:18px;color:var(--leaf-700);">--°C</div></div>
+      <div class="center"><div class="muted" style="font-size:11px;" data-i18n="pq_humidity">Humidity</div><div id="humVal" style="font-family:var(--font-display);font-size:18px;color:var(--sky-600);">--%</div></div>
+      <div class="center"><div class="muted" style="font-size:11px;" data-i18n="pq_gas">Gas (VOC)</div><div id="gasVal" style="font-family:var(--font-display);font-size:18px;color:var(--gold-600);">-- ppm</div></div>
+    </div>
+    <button class="btn btn-outline" onclick="readSensors()" data-i18n="pq_read_sensors">🔄 Read Live Sensors</button>
+    <p class="muted" id="sensorTimestamp" style="margin-top:8px;font-size:11px;"></p>
+  </div>
+
+  <button class="btn btn-primary" onclick="analyzeBatch()" data-i18n="pq_analyze_btn" style="margin:16px 0;">🔍 Analyze Batch</button>
+
+  <div id="invalidImageCard" class="card" style="display:none;border:1px solid var(--alert-600);background:var(--alert-soft-bg,var(--surface));">
+    <div class="card-title" style="color:var(--alert-600);">⚠️ <span data-i18n="pq_invalid_photo_title">Photo doesn't look like produce</span></div>
+    <p class="mt-0 invalid-msg"></p>
+  </div>
+
+  <div id="resultSection" style="display:none;">
+    <div class="section-title" data-i18n="pq_result_title">Grading Result</div>
+    <div class="card">
+      <div class="flex-between">
+        <div style="font-family:var(--font-display);font-size:34px;color:var(--leaf-700);" id="gradeVal">--</div>
+        <span class="chip chip-up" id="confidenceChip">--</span>
+      </div>
+      <p class="mt-0" id="defectNotes" style="margin-top:8px;"></p>
+    </div>
+
+    <div class="card">
+      <div class="flex-between">
+        <div class="card-title" style="margin-bottom:0;">⏳ <span data-i18n="pq_shelf_life">Remaining Shelf Life</span></div>
+        <span class="chip" id="riskChip">--</span>
+      </div>
+      <div style="font-family:var(--font-display);font-size:28px;color:var(--gold-600);margin-top:8px;" id="shelfLifeVal">-- days</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📦 <span data-i18n="pq_storage_actions">Recommended Storage Actions</span></div>
+      <ul id="actionsList" style="padding-left:18px;margin:0;line-height:1.8;"></ul>
+    </div>
+
+    <button class="btn btn-gold" onclick="generateReport()" data-i18n="pq_generate_report" style="margin:12px 0;">📋 Generate Traceable Report</button>
+
+    <div id="reportSection" style="display:none;" class="card center">
+      <div class="card-title" style="justify-content:center;" data-i18n="pq_report_ready">✅ Report Generated</div>
+      <div id="qrcodeContainer" style="display:flex;justify-content:center;margin:14px 0;"></div>
+      <p class="muted" id="batchIdText"></p>
+      <a id="reportLink" href="#" target="_blank" class="btn btn-primary" data-i18n="pq_view_report">View Full Traceable Report ↗</a>
+      <p class="muted" style="margin-top:10px;font-size:11px;" data-i18n="pq_report_share_note">Share this link or QR code with aggregators/buyers — no AgroStar account needed to view it.</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+let currentSensors = { temperature_c: 24, humidity_pct: 80, gas_ppm: 60 };
+let lastResult = null;
+
+function previewImage(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('imgPreview').innerHTML = `<img src="${ev.target.result}" style="width:100%;height:150px;object-fit:cover;">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function readSensors(){
+  fetch('/api/quality_grading/sensors').then(r=>r.json()).then(d=>{
+    currentSensors = d;
+    document.getElementById('tempVal').textContent = d.temperature_c + '°C';
+    document.getElementById('humVal').textContent = d.humidity_pct + '%';
+    document.getElementById('gasVal').textContent = d.gas_ppm + ' ppm';
+    document.getElementById('sensorTimestamp').textContent = 'Read at ' + d.captured_at;
+  });
+}
+readSensors();
+
+function analyzeBatch(){
+  const formData = new FormData();
+  const fileInput = document.getElementById('fileInput');
+  if (fileInput.files[0]) formData.append('image', fileInput.files[0]);
+  formData.append('temperature_c', currentSensors.temperature_c);
+  formData.append('humidity_pct', currentSensors.humidity_pct);
+  formData.append('gas_ppm', currentSensors.gas_ppm);
+
+  document.getElementById('invalidImageCard').style.display = 'none';
+
+  fetch('/api/quality_grading/analyze', { method: 'POST', body: formData })
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+      if (!ok || d.valid === false) {
+        document.getElementById('resultSection').style.display = 'none';
+        const invalidCard = document.getElementById('invalidImageCard');
+        invalidCard.style.display = 'block';
+        invalidCard.querySelector('.invalid-msg').textContent = d.message || 'This doesn\'t look like a produce photo. Try a different photo, or skip the photo and grade from sensor data alone.';
+        invalidCard.scrollIntoView({behavior:'smooth', block:'nearest'});
+        return;
+      }
+      lastResult = d;
+      document.getElementById('resultSection').style.display = 'block';
+      document.getElementById('reportSection').style.display = 'none';
+      document.getElementById('gradeVal').textContent = 'Grade ' + d.grade;
+      document.getElementById('confidenceChip').textContent = d.confidence + ' confidence';
+      document.getElementById('defectNotes').textContent = d.defect_notes;
+      document.getElementById('shelfLifeVal').textContent = d.remaining_shelf_life_days + ' days';
+      const riskChip = document.getElementById('riskChip');
+      riskChip.textContent = d.risk_level + ' risk';
+      riskChip.className = 'chip ' + (d.risk_level === 'Low' ? 'chip-up' : d.risk_level === 'Medium' ? 'chip-stable' : 'chip-down');
+      document.getElementById('actionsList').innerHTML = d.storage_actions.map(a => `<li>${a}</li>`).join('');
+      document.getElementById('resultSection').scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+}
+
+function generateReport(){
+  if (!lastResult) return;
+  fetch('/api/quality_grading/report', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(lastResult)
+  }).then(r=>r.json()).then(d=>{
+    document.getElementById('reportSection').style.display = 'block';
+    document.getElementById('batchIdText').textContent = 'Batch ID: ' + d.batch_id;
+    const fullUrl = window.location.origin + d.report_url;
+    document.getElementById('reportLink').href = d.report_url;
+    document.getElementById('qrcodeContainer').innerHTML = '';
+    new QRCode(document.getElementById('qrcodeContainer'), { text: fullUrl, width: 140, height: 140 });
+    document.getElementById('reportSection').scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+}
+</script>
+{% endblock %}

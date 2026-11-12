@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Yield Prediction — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_yield">Yield Prediction</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="card">
+    <div class="card-title">🌾 <span data-i18n="card_enter_details">Enter field details</span></div>
+    <div class="field"><label data-i18n="lbl_crop">Crop</label>
+      <select id="crop"><option>Rice</option><option>Wheat</option><option>Maize</option><option>Sugarcane</option><option>Groundnut</option><option>Cotton</option></select>
+    </div>
+    <div class="field"><label data-i18n="lbl_area">Area (hectares)</label><input type="number" id="area" value="1" min="0.1" step="0.1"></div>
+    <div class="field"><label data-i18n="lbl_sowing_date">Sowing Date</label><input type="date" id="date"></div>
+    <button class="btn btn-primary" data-i18n="btn_yield_forecast" onclick="predict()">Get Yield Forecast</button>
+  </div>
+
+  <div id="result" style="display:none;">
+    <div class="card">
+      <div class="card-title">📊 <span data-i18n="card_forecast">Forecast</span></div>
+      <div class="flex-between">
+        <div>
+          <div style="font-family:var(--font-display);font-size:32px;color:var(--leaf-700);" id="yieldVal">--</div>
+          <span class="muted" data-i18n="txt_tonnes_expected">tonnes expected</span>
+        </div>
+        <span class="chip chip-up" id="confVal">--</span>
+      </div>
+      <a id="yieldWhatsappShare" href="#" target="_blank" class="btn-sm btn btn-outline" style="margin-top:10px;display:inline-block;text-decoration:none;">📱 Share on WhatsApp</a>
+    </div>
+    <div class="card">
+      <div class="card-title">💡 <span data-i18n="card_ai_tips">AI Tips</span></div>
+      <ul id="tipsList" style="padding-left:18px;margin:0;line-height:1.8;"></ul>
+
+      <button class="why-toggle" onclick="toggleWhy()">
+        <span id="whyIcon">▸</span> <span data-i18n="btn_why_prediction">Why this prediction?</span>
+      </button>
+      <div class="why-panel" id="whyPanel"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📈 <span data-i18n="card_last_seasons">Last 5 Seasons — This Crop</span></div>
+      <div id="historyChart" style="display:flex;align-items:flex-end;gap:10px;height:110px;padding-top:10px;"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function toggleWhy(){
+  document.getElementById('whyPanel').classList.toggle('open');
+  document.getElementById('whyIcon').textContent = document.getElementById('whyPanel').classList.contains('open') ? '▾' : '▸';
+}
+
+function loadHistory(crop){
+  fetch('/api/yield_history?crop=' + encodeURIComponent(crop)).then(r=>r.json()).then(d=>{
+    const maxVal = Math.max(...d.history.map(h => h.yield_tonnes));
+    document.getElementById('historyChart').innerHTML = d.history.map(h => {
+      const heightPx = Math.max(6, Math.round((h.yield_tonnes / maxVal) * 90));
+      return `
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:10px;font-weight:700;color:var(--leaf-700);">${h.yield_tonnes}</span>
+          <div style="width:100%;max-width:28px;height:${heightPx}px;background:linear-gradient(180deg,var(--gold-500),var(--leaf-600,var(--leaf-700)));border-radius:5px 5px 0 0;"></div>
+          <span style="font-size:10px;color:var(--text-soft);">${h.season}</span>
+        </div>`;
+    }).join('');
+  });
+}
+
+function predict(){
+  const crop = document.getElementById('crop').value;
+  const area = document.getElementById('area').value;
+  fetch('/api/predict_yield', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, area})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('yieldVal').textContent = d.predicted_yield_tonnes;
+      document.getElementById('confVal').textContent = t('label_confidence') + ' ' + d.confidence;
+      document.getElementById('tipsList').innerHTML = d.tips.map(tip=>`<li>${tip}</li>`).join('');
+      document.getElementById('whyPanel').innerHTML = d.factors.map(f=>`
+        <div class="why-row">
+          <span>${f.name}</span>
+          <span class="why-weight ${f.weight}">${f.weight}</span>
+        </div>`).join('');
+      loadHistory(crop);
+
+      const shareMsg = `🌾 AgroStar Yield Forecast\nCrop: ${crop} (${area} ha)\nPredicted yield: ${d.predicted_yield_tonnes} tonnes\nConfidence: ${d.confidence}`;
+      document.getElementById('yieldWhatsappShare').href = 'https://wa.me/?text=' + encodeURIComponent(shareMsg);
+    });
+}
+</script>
+{% endblock %}

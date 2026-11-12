@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Community — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_community">Farmer Community</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="card">
+    <div class="card-title">✍️ <span data-i18n="community_share">Share something</span></div>
+    <div class="field"><textarea id="postText" rows="3" data-i18n-placeholder="community_placeholder" placeholder="Share a tip, success story, or ask a question..."></textarea></div>
+    <button class="btn btn-gold" onclick="submitPost()" data-i18n="community_post_btn">Post to Community</button>
+  </div>
+
+  <div class="section-title" data-i18n="community_recent">Recent Posts</div>
+  <div id="postList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function loadPosts(){
+  fetch('/api/community_posts?lang=' + getCurrentLang()).then(r=>r.json()).then(d=>{
+    document.getElementById('postList').innerHTML = d.posts.map(p=>`
+      <div class="card">
+        <div class="flex-between">
+          <b style="font-size:13px;">${p.author}</b>
+          <span class="chip chip-stable">${p.tag}</span>
+        </div>
+        <p style="margin:8px 0;">${p.text}</p>
+        <div class="muted" style="font-size:12px;">❤️ ${p.likes}   💬 ${p.replies} ${t('lbl_replies')}</div>
+      </div>`).join('');
+  });
+}
+function submitPost(){
+  const text = document.getElementById('postText').value.trim();
+  if(!text) return;
+  fetch('/api/community_post', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text, author:'You', tag: t('tag_discussion')})})
+    .then(r=>r.json()).then(()=>{
+      document.getElementById('postText').value = '';
+      loadPosts();
+    });
+}
+loadPosts();
+document.addEventListener('agrostar:langchange', loadPosts);
+</script>
+{% endblock %}

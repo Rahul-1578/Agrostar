@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}Features — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">A</div>
+    <h1 data-i18n="feat_title">Features</h1>
+  </div>
+</div>
+<div class="page-body">
+  <p class="muted" data-i18n="feat_subtitle">Tap any tool below to get started.</p>
+
+  <div class="section-title" data-i18n="feat_predict">Predict &amp; Plan</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/my-fields">
+      <span class="tile-ic tile-green">🗺️</span><span data-i18n="tile_my_fields">My Fields</span>
+    </a>
+    <a class="feature-tile" href="/feature/yield-prediction">
+      <span class="tile-ic tile-green">🌾</span><span data-i18n="tile_yield">Yield Prediction</span>
+    </a>
+    <a class="feature-tile" href="/feature/crop-recommendation">
+      <span class="tile-ic tile-green">🌱</span><span data-i18n="tile_crop_reco">Crop Recommendation</span>
+    </a>
+    <a class="feature-tile" href="/feature/best-crops-for-you">
+      <span class="tile-ic tile-gold">📍</span><span data-i18n="tile_best_crops">Best Crops for You</span>
+    </a>
+    <a class="feature-tile" href="/feature/growth-monitoring">
+      <span class="tile-ic tile-green">📈</span><span data-i18n="tile_growth">Growth Stage Monitoring</span>
+    </a>
+    <a class="feature-tile" href="/feature/reminders">
+      <span class="tile-ic tile-gold">⏰</span><span data-i18n="tile_reminders">Farm Reminders</span>
+    </a>
+    <a class="feature-tile" href="/chatbot">
+      <span class="tile-ic tile-green">💬</span><span data-i18n="tile_aasha_chatbot">Aasha Chatbot</span>
+    </a>
+    <a class="feature-tile" href="/feature/budget-planner">
+      <span class="tile-ic tile-gold">💸</span><span data-i18n="tile_budget_planner">Season Budget Planner</span>
+    </a>
+    <a class="feature-tile" href="/feature/notification-alerts">
+      <span class="tile-ic tile-gold">🔔</span><span data-i18n="tile_notif_alerts">Price &amp; Weather Alerts</span>
+    </a>
+    <a class="feature-tile" href="/feature/seed-varieties">
+      <span class="tile-ic tile-green">🌾</span><span data-i18n="tile_seed_varieties">Seed Variety Comparison</span>
+    </a>
+    <a class="feature-tile" href="/feature/sowing-calendar">
+      <span class="tile-ic tile-sky">📅</span><span data-i18n="tile_sowing_calendar">Rainfall-based Sowing Calendar</span>
+    </a>
+    <a class="feature-tile" href="/feature/crop-rotation">
+      <span class="tile-ic tile-green">🔄</span><span data-i18n="tile_crop_rotation">Crop Rotation Planner</span>
+    </a>
+    <a class="feature-tile" href="/feature/yield-benchmark">
+      <span class="tile-ic tile-green">🏆</span><span data-i18n="tile_yield_benchmark">Crop Yield Benchmarking</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_soil_inputs">Soil &amp; Inputs</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/soil-health">
+      <span class="tile-ic tile-earth">🧪</span><span data-i18n="tile_soil">Soil Health Analysis</span>
+    </a>
+    <a class="feature-tile" href="/feature/fertilizer-plan">
+      <span class="tile-ic tile-earth">🧴</span><span data-i18n="tile_fertilizer">Fertilizer &amp; Pesticide Plan</span>
+    </a>
+    <a class="feature-tile" href="/feature/pest-detection">
+      <span class="tile-ic tile-earth">🐛</span><span data-i18n="tile_pest">Pest &amp; Disease Detection</span>
+    </a>
+    <a class="feature-tile" href="/feature/cover-crops">
+      <span class="tile-ic tile-green">🌿</span><span data-i18n="tile_cover_crops">Cover Crop Selection Guide</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_weather_market">Weather &amp; Market</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/weather">
+      <span class="tile-ic tile-sky">⛅</span><span data-i18n="tile_weather">Weather Forecast</span>
+    </a>
+    <a class="feature-tile" href="/feature/climate-adaptation">
+      <span class="tile-ic tile-sky">🌍</span><span data-i18n="tile_climate">Climate Adaptation</span>
+    </a>
+    <a class="feature-tile" href="/feature/market-prices">
+      <span class="tile-ic tile-gold">💰</span><span data-i18n="tile_market">Market Prices</span>
+    </a>
+    <a class="feature-tile" href="/feature/rainfall-history">
+      <span class="tile-ic tile-sky">🌧️</span><span data-i18n="tile_rainfall">Rainfall History</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_space">Crop Health from Space</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/satellite-health">
+      <span class="tile-ic tile-green">🛰️</span><span data-i18n="tile_satellite">Satellite Crop Health (NDVI)</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_postharvest">Post-Harvest &amp; Traceability</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/postharvest-quality-grading">
+      <span class="tile-ic tile-gold">🍅</span><span data-i18n="tile_postharvest_quality">Quality Grading Unit</span>
+    </a>
+    <a class="feature-tile" href="/feature/cold-storage">
+      <span class="tile-ic tile-sky">🧊</span><span data-i18n="tile_cold_storage">Cold Storage Finder</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_govt">Government &amp; Finance</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/govt-schemes">
+      <span class="tile-ic tile-earth">🏛️</span><span data-i18n="tile_schemes">Govt Schemes</span>
+    </a>
+    <a class="feature-tile" href="/feature/govt-camps">
+      <span class="tile-ic tile-earth">🎪</span><span data-i18n="tile_govt_camps">Govt Camps &amp; Krishi Mela</span>
+    </a>
+    <a class="feature-tile" href="/feature/insurance-loans">
+      <span class="tile-ic tile-earth">🛡️</span><span data-i18n="tile_insurance">Insurance &amp; Loans</span>
+    </a>
+    <a class="feature-tile" href="/feature/sustainability">
+      <span class="tile-ic tile-green">🌿</span><span data-i18n="tile_sustainability">Sustainability Score</span>
+    </a>
+    <a class="feature-tile" href="/feature/farm-ledger">
+      <span class="tile-ic tile-gold">📒</span><span data-i18n="tile_ledger">Farm Expense/Income Ledger</span>
+    </a>
+    <a class="feature-tile" href="/feature/farm-diary">
+      <span class="tile-ic tile-gold">🎙️</span><span data-i18n="tile_farm_diary">Digital Farm Diary</span>
+    </a>
+    <a class="feature-tile" href="/feature/buyer-connect">
+      <span class="tile-ic tile-gold">🤝</span><span data-i18n="tile_buyer_connect">Direct Mandi Bidding / Buyer Connect</span>
+    </a>
+    <a class="feature-tile" href="/feature/group-selling">
+      <span class="tile-ic tile-gold">👨‍🌾</span><span data-i18n="tile_group_selling">FPO / Group Selling</span>
+    </a>
+    <a class="feature-tile" href="/feature/fpo-registration-guide">
+      <span class="tile-ic tile-gold">📜</span><span data-i18n="tile_fpo_guide">FPO/FPC Registration Guide</span>
+    </a>
+    <a class="feature-tile" href="/feature/solar-pump-scheme">
+      <span class="tile-ic tile-gold">☀️</span><span data-i18n="tile_solar_pump">PM-KUSUM Solar Pump Scheme</span>
+    </a>
+    <a class="feature-tile" href="/feature/storage-loss-calculator">
+      <span class="tile-ic tile-gold">📦</span><span data-i18n="tile_storage_loss">Storage Loss Calculator</span>
+    </a>
+    <a class="feature-tile" href="/feature/nearest-mandi">
+      <span class="tile-ic tile-gold">📍</span><span data-i18n="tile_nearest_mandi">Nearest Mandi Locator</span>
+    </a>
+    <a class="feature-tile" href="/feature/enam-info">
+      <span class="tile-ic tile-gold">🌐</span><span data-i18n="tile_enam_info">e-NAM Integration Info</span>
+    </a>
+    <a class="feature-tile" href="/feature/qr-traceability">
+      <span class="tile-ic tile-gold">🔳</span><span data-i18n="tile_qr_traceability">QR Farm-to-Table Traceability</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_paani">Paani (Water Management)</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/irrigation-scheduler">
+      <span class="tile-ic tile-sky">💧</span><span data-i18n="tile_irrigation_scheduler">Smart Irrigation Scheduler</span>
+    </a>
+    <a class="feature-tile" href="/feature/groundwater-tracker">
+      <span class="tile-ic tile-sky">🕳️</span><span data-i18n="tile_groundwater">Groundwater / Borewell Tracker</span>
+    </a>
+    <a class="feature-tile" href="/feature/water-quality">
+      <span class="tile-ic tile-sky">🧪</span><span data-i18n="tile_water_quality">Water Quality Checker</span>
+    </a>
+    <a class="feature-tile" href="/feature/spray-advisory">
+      <span class="tile-ic tile-sky">🌦️</span><span data-i18n="tile_spray_advisory">Weather-based Spray Advisory</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_sharing">Resource Sharing</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/equipment-rental">
+      <span class="tile-ic tile-earth">🚜</span><span data-i18n="tile_equipment_rental">Equipment Rental Marketplace</span>
+    </a>
+    <a class="feature-tile" href="/feature/agri-shop-prices">
+      <span class="tile-ic tile-earth">🏪</span><span data-i18n="tile_agri_shop_prices">Nearby Agri-Shop Price Compare</span>
+    </a>
+    <a class="feature-tile" href="/feature/labour-marketplace">
+      <span class="tile-ic tile-earth">👷</span><span data-i18n="tile_labour_marketplace">Labour / Mazdoor On-Demand</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_community">Community</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/community">
+      <span class="tile-ic tile-gold">👥</span><span data-i18n="tile_community">Farmer Community</span>
+    </a>
+    <a class="feature-tile" href="/feature/disease-alerts">
+      <span class="tile-ic tile-earth">🚨</span><span data-i18n="tile_disease_alerts">Disease Outbreak Alerts</span>
+    </a>
+    <a class="feature-tile" href="/feature/video-tutorials">
+      <span class="tile-ic tile-gold">🎬</span><span data-i18n="tile_video_tutorials">Video Tutorials Library</span>
+    </a>
+    <a class="feature-tile" href="/feature/kvk-expert-booking">
+      <span class="tile-ic tile-earth">👨‍🔬</span><span data-i18n="tile_kvk_booking">KVK Expert Call Booking</span>
+    </a>
+    <a class="feature-tile" href="/feature/farmer-reels">
+      <span class="tile-ic tile-gold">📹</span><span data-i18n="tile_farmer_reels">Farmer Reels</span>
+    </a>
+    <a class="feature-tile" href="/feature/leaderboard">
+      <span class="tile-ic tile-earth">🏆</span><span data-i18n="tile_leaderboard">Leaderboard &amp; Badges</span>
+    </a>
+    <a class="feature-tile" href="/feature/referral">
+      <span class="tile-ic tile-green">🎁</span><span data-i18n="tile_referral">Referral Program</span>
+    </a>
+    <a class="feature-tile" href="/feature/games">
+      <span class="tile-ic tile-gold">🎮</span><span data-i18n="tile_games">Free Time / Games</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_livestock">Livestock</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/pashu-health">
+      <span class="tile-ic tile-green">🐄</span><span data-i18n="tile_pashu_health">Pashu Health Tracker</span>
+    </a>
+    <a class="feature-tile" href="/feature/vet-finder">
+      <span class="tile-ic tile-earth">🩺</span><span data-i18n="tile_vet_finder">Nearby Vet Finder</span>
+    </a>
+  </div>
+
+  <div class="section-title" data-i18n="feat_future">Future Innovations (Proposed R&amp;D)</div>
+  <div class="feature-grid">
+    <a class="feature-tile" href="/feature/pest-sentinel-network">
+      <span class="tile-ic tile-earth">📡</span><span data-i18n="tile_pest_sentinel">Pest &amp; Disease Sentinel Network</span>
+    </a>
+    <a class="feature-tile" href="/feature/autonomous-weeding-robot">
+      <span class="tile-ic tile-green">🤖</span><span data-i18n="tile_autonomous_weeder">Autonomous Precision Weeder</span>
+    </a>
+  </div>
+</div>
+{% endblock %}

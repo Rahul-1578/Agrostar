@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Farm Reminders — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_reminders">Farm Reminders</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted" data-i18n="reminders_intro">Get an alarm when it's time to fertilize, spray, water, or check your crop again.</p>
+
+  <div id="notifBanner" class="notif-permission-banner" style="display:none;">
+    <p data-i18n="notif_permission_prompt">Turn on alarm notifications so AgroStar can alert you at the right time — even if the app is in the background.</p>
+    <button onclick="requestReminderNotificationPermission()" data-i18n="btn_enable_notifications">Enable Alarm Notifications</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="reminders_add_title">⏰ Add a Reminder</div>
+
+    <div class="field"><label data-i18n="lbl_crop">Crop</label>
+      <select id="remCrop">
+        <option>Rice</option><option>Wheat</option><option>Maize</option>
+        <option>Groundnut</option><option>Sugarcane</option><option>Cotton</option>
+      </select>
+    </div>
+
+    <div class="field"><label data-i18n="lbl_task">What to do</label>
+      <select id="remTask" onchange="onTaskChange()">
+        <option value="task_fertilizer" data-i18n="task_fertilizer">Apply fertilizer</option>
+        <option value="task_pesticide" data-i18n="task_pesticide">Spray pesticide</option>
+        <option value="task_water" data-i18n="task_water">Irrigate / check water</option>
+        <option value="task_pest_check" data-i18n="task_pest_check">Check for pests or disease</option>
+        <option value="task_soil_check" data-i18n="task_soil_check">Check soil health</option>
+        <option value="task_harvest" data-i18n="task_harvest">Harvest check</option>
+        <option value="task_custom" data-i18n="task_custom">Custom — type your own</option>
+      </select>
+    </div>
+
+    <div class="field" id="customTaskField" style="display:none;">
+      <label data-i18n="lbl_custom_task">Describe the task</label>
+      <input type="text" id="remCustomTask" data-i18n-placeholder="placeholder_custom_task" placeholder="e.g. Check drainage after rain">
+    </div>
+
+    <div class="field">
+      <label data-i18n="lbl_remind_after">Remind me after</label>
+      <div class="day-chip-row" id="dayChipRow">
+        <span class="day-chip" data-days="1">1</span>
+        <span class="day-chip" data-days="3">3</span>
+        <span class="day-chip selected" data-days="5">5</span>
+        <span class="day-chip" data-days="7">7</span>
+        <span class="day-chip" data-days="14">14</span>
+        <span class="day-chip" data-days="21">21</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="margin-top:6px;" onclick="submitReminder()" data-i18n="btn_add_reminder">Add Reminder</button>
+  </div>
+
+  <div id="reminderLists"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let selectedDays = 5;
+
+document.getElementById('dayChipRow').addEventListener('click', (e) => {
+  const chip = e.target.closest('.day-chip');
+  if (!chip) return;
+  document.querySelectorAll('#dayChipRow .day-chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+  selectedDays = parseInt(chip.dataset.days, 10);
+});
+
+function onTaskChange(){
+  const val = document.getElementById('remTask').value;
+  document.getElementById('customTaskField').style.display = (val === 'task_custom') ? 'block' : 'none';
+}
+
+function submitReminder(){
+  const crop = document.getElementById('remCrop').value;
+  const taskSel = document.getElementById('remTask');
+  const taskKey = taskSel.value;
+  let task;
+  if (taskKey === 'task_custom') {
+    task = document.getElementById('remCustomTask').value.trim();
+    if (!task) { document.getElementById('remCustomTask').focus(); return; }
+  } else {
+    task = taskSel.options[taskSel.selectedIndex].textContent.trim();
+  }
+  addReminder({ crop, task, days: selectedDays });
+  document.getElementById('remCustomTask').value = '';
+  renderReminders();
+}
+
+function renderReminders(){
+  const due = dueReminders();
+  const upcoming = activeReminders().filter(r => !due.includes(r));
+  const done = completedReminders();
+
+  function row(r, overdueLook){
+    return `
+      <div class="reminder-item ${overdueLook ? 'overdue' : ''}">
+        <div class="ri-icon">${overdueLook ? '⏰' : '📅'}</div>
+        <div class="ri-body">
+          <div class="ri-task">${r.task}</div>
+          <div class="ri-crop">🌾 ${r.crop}</div>
+          <div class="ri-due">${reminderDueLabel(r.dueAt)}</div>
+        </div>
+        <div class="ri-actions">
+          <button class="ri-done-btn" onclick="completeReminder('${r.id}');renderReminders();">${t('btn_mark_done')}</button>
+          <button class="ri-delete-btn" onclick="deleteReminder('${r.id}');renderReminders();">${t('btn_delete')}</button>
+        </div>
+      </div>`;
+  }
+
+  let html = '';
+
+  if (due.length){
+    html += `<div class="section-title">${t('sec_due_now')}</div>` + due.map(r => row(r, true)).join('');
+  }
+  if (upcoming.length){
+    html += `<div class="section-title">${t('sec_upcoming')}</div>` + upcoming.map(r => row(r, false)).join('');
+  }
+  if (!due.length && !upcoming.length){
+    html += `<div class="card center"><p class="mt-0 muted">${t('txt_no_reminders')}</p></div>`;
+  }
+  if (done.length){
+    html += `<div class="section-title">${t('sec_completed')}</div>` +
+      done.slice(0, 10).map(r => `
+        <div class="reminder-item" style="opacity:0.6;">
+          <div class="ri-icon">✅</div>
+          <div class="ri-body">
+            <div class="ri-task" style="text-decoration:line-through;">${r.task}</div>
+            <div class="ri-crop">🌾 ${r.crop}</div>
+          </div>
+          <div class="ri-actions">
+            <button class="ri-delete-btn" onclick="deleteReminder('${r.id}');renderReminders();">${t('btn_delete')}</button>
+          </div>
+        </div>`).join('');
+  }
+
+  document.getElementById('reminderLists').innerHTML = html;
+
+  const notifBanner = document.getElementById('notifBanner');
+  if ('Notification' in window && Notification.permission === 'default') {
+    notifBanner.style.display = 'flex';
+  } else {
+    notifBanner.style.display = 'none';
+  }
+}
+
+document.addEventListener('agrostar:notifpermchange', renderReminders);
+document.addEventListener('agrostar:langchange', renderReminders);
+onTaskChange();
+renderReminders();
+
+// If a page linked here with pre-fill values (?crop=Rice&task=...&days=5),
+// load them into the form so the quick "Set Reminder" buttons on other
+// feature pages can hand off straight into a ready-to-submit form.
+(function prefillFromQuery(){
+  const params = new URLSearchParams(location.search);
+  const crop = params.get('crop');
+  const task = params.get('task');
+  const days = parseInt(params.get('days'), 10);
+  if (crop) {
+    const sel = document.getElementById('remCrop');
+    if ([...sel.options].some(o => o.value === crop)) sel.value = crop;
+  }
+  if (task) {
+    document.getElementById('remTask').value = 'task_custom';
+    onTaskChange();
+    document.getElementById('remCustomTask').value = task;
+  }
+  if (days && days > 0) {
+    selectedDays = days;
+    document.querySelectorAll('#dayChipRow .day-chip').forEach(c => {
+      c.classList.toggle('selected', parseInt(c.dataset.days, 10) === days);
+    });
+  }
+})();
+</script>
+{% endblock %}

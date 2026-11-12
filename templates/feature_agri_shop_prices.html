@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Agri-Shop Price Compare — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Nearby Agri-Shop Price Compare</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Khaad/beej kis dukaan pe sasta mil raha hai — ek nazar me dekhein.</p>
+  <div class="field"><label>Item</label><select id="shopItem" onchange="loadShopPrices()"></select></div>
+  <div id="shopResult">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function loadShopPrices(){
+  const item = document.getElementById('shopItem').value;
+  fetch('/api/agri_shop_prices' + (item ? '?item=' + encodeURIComponent(item) : ''))
+    .then(r=>r.json()).then(d=>{
+      if (document.getElementById('shopItem').options.length === 0){
+        document.getElementById('shopItem').innerHTML = d.items_available.map(i => `<option value="${i}" ${i===d.item?'selected':''}>${i}</option>`).join('');
+      }
+      document.getElementById('shopResult').innerHTML = d.shops.map((s, idx) => `
+        <div class="card flex-between" ${idx===0 ? 'style="border:2px solid var(--gold-500);"' : ''}>
+          <div>
+            ${idx===0 ? '<span class="chip chip-up">Cheapest</span><br>' : ''}
+            <b>${s.shop}</b>
+            <div class="muted" style="font-size:12px;">📍 ${s.distance_km} km away</div>
+          </div>
+          <div style="font-family:var(--font-display);font-size:18px;color:var(--leaf-700);">₹${s.price}</div>
+        </div>`).join('');
+    });
+}
+
+loadShopPrices();
+</script>
+{% endblock %}

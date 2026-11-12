@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Sustainability — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_sustainability">Sustainability Score</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body" id="content">
+  <div class="card center">
+    <div class="skeleton skeleton-line" style="height:40px;width:80px;margin:0 auto 10px;"></div>
+    <div class="skeleton skeleton-line short" style="margin:0 auto;"></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+fetch('/api/sustainability_score').then(r=>r.json()).then(d=>{
+  document.getElementById('content').innerHTML = `
+    <div class="card center">
+      <div style="font-family:var(--font-display);font-size:44px;color:var(--leaf-700);">${d.score}</div>
+      <span class="chip chip-${d.rating==='Excellent'?'up':d.rating==='Good'?'stable':'down'}">${d.rating}</span>
+      <p class="muted" style="margin-top:10px;">≈ ${d.co2_saved_kg} kg CO₂ ${t('txt_co2_saved')}</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 ${t('card_breakdown')}</div>
+      ${d.breakdown.map(b=>`
+        <div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border);">
+          <span>${b.factor}</span>
+          <span class="chip chip-${b.impact==='positive'?'up':b.impact==='neutral'?'stable':'down'}">${b.impact}</span>
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-title">💡 ${t('card_ways_improve')}</div>
+      <ul style="padding-left:18px;margin:0;line-height:1.8;">
+        ${d.tips.map(tip=>`<li>${tip}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+});
+</script>
+{% endblock %}

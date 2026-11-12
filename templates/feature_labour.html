@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Labour Marketplace — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Labour / Mazdoor On-Demand</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Harvest, sowing, ya weeding ke liye nearby mazdoor dhoondein — ya khud available worker ke roop me register karein.</p>
+
+  <div class="field" style="margin-bottom:6px;">
+    <select id="labourLocFilter" onchange="loadWorkers()"></select>
+  </div>
+  <div class="field"><label>Filter by skill</label>
+    <select id="labourSkillFilter" onchange="loadWorkers()"><option value="">All skills</option></select>
+  </div>
+
+  <div class="section-title">Available Workers Nearby</div>
+  <div id="workersList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🙋 Register as Available Worker</div>
+    <p class="muted mt-0">Agar aap khud dusre kheto me mazdoori karna chahte hain, to yahan list karein.</p>
+    <div class="field"><label>Skill</label>
+      <select id="regSkill"><option>Harvesting</option><option>Transplanting</option><option>Weeding</option><option>Sowing</option><option>Spraying / Pesticide</option><option>Other</option></select>
+    </div>
+    <div class="field"><label>Daily rate (₹)</label><input type="number" id="regRate" min="1" placeholder="e.g. 400"></div>
+    <div class="field"><label>Location</label><select id="regLoc"></select></div>
+    <div class="field"><label>Contact number</label><input type="tel" id="regContact" placeholder="+91 90000 00000"></div>
+    <button class="btn btn-primary" onclick="registerWorker()">Register</button>
+  </div>
+
+  <div class="section-title">Open Labour Requirements</div>
+  <div id="requirementsList"></div>
+
+  <div class="card">
+    <div class="card-title">📢 Post a Labour Requirement</div>
+    <div class="field"><label>Work type</label>
+      <select id="reqWorkType"><option>Harvesting</option><option>Transplanting</option><option>Weeding</option><option>Sowing</option><option>Spraying / Pesticide</option></select>
+    </div>
+    <div class="field"><label>Workers needed</label><input type="number" id="reqWorkersNeeded" min="1" placeholder="e.g. 4"></div>
+    <div class="field"><label>When needed</label><input type="text" id="reqDateNeeded" placeholder="e.g. This week / 3 days from now"></div>
+    <div class="field"><label>Rate offered per day (₹)</label><input type="number" id="reqRateOffered" min="1" placeholder="e.g. 450"></div>
+    <div class="field"><label>Location</label><select id="reqLoc"></select></div>
+    <div class="field"><label>Contact number</label><input type="tel" id="reqContact" placeholder="+91 90000 00000"></div>
+    <button class="btn btn-gold" onclick="postRequirement()">Post Requirement</button>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateLabourLocs(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    const opts = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    document.getElementById('labourLocFilter').innerHTML = '<option value="">All locations</option>' + opts;
+    document.getElementById('regLoc').innerHTML = opts;
+    document.getElementById('reqLoc').innerHTML = opts;
+    loadWorkers();
+    loadRequirements();
+  });
+}
+
+function loadWorkers(){
+  const location = document.getElementById('labourLocFilter').value;
+  const skill = document.getElementById('labourSkillFilter').value;
+  const params = new URLSearchParams();
+  if (location) params.set('location', location);
+  if (skill) params.set('skill', skill);
+  fetch('/api/labour_workers?' + params.toString()).then(r=>r.json()).then(d=>{
+    if (document.getElementById('labourSkillFilter').options.length <= 1){
+      document.getElementById('labourSkillFilter').innerHTML = '<option value="">All skills</option>' + d.skills.map(s=>`<option>${s}</option>`).join('');
+    }
+    document.getElementById('workersList').innerHTML = d.workers.map(w => `
+      <div class="card">
+        <div class="flex-between">
+          <div><b>${w.name}</b><div class="muted" style="font-size:12px;">${w.skill} • 📍 ${w.location}</div></div>
+          <span class="chip ${w.available ? 'chip-up' : 'chip-down'}">${w.available ? 'Available' : 'Booked'}</span>
+        </div>
+        <div class="flex-between" style="margin-top:10px;">
+          <b style="font-family:var(--font-display);color:var(--leaf-700);">₹${w.daily_rate}/day</b>
+          <a href="tel:${w.contact.replace(/\\s/g,'')}" class="btn-sm btn btn-gold">📞 Contact</a>
+        </div>
+      </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Is filter ke liye koi worker nahi mila.</p></div>';
+  });
+}
+
+function registerWorker(){
+  const skill = document.getElementById('regSkill').value;
+  const daily_rate = document.getElementById('regRate').value;
+  const location = document.getElementById('regLoc').value;
+  const contact = document.getElementById('regContact').value.trim();
+  if (!daily_rate) { document.getElementById('regRate').focus(); return; }
+  fetch('/api/labour_worker_register', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({skill, daily_rate, location, contact})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'registered'){
+        document.getElementById('regRate').value = '';
+        document.getElementById('regContact').value = '';
+        loadWorkers();
+      }
+    });
+}
+
+function loadRequirements(){
+  const location = document.getElementById('labourLocFilter').value;
+  fetch('/api/labour_requirements' + (location ? '?location=' + encodeURIComponent(location) : ''))
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('requirementsList').innerHTML = d.requirements.map(r => `
+        <div class="card">
+          <div class="flex-between">
+            <div><b>${r.work_type}</b><div class="muted" style="font-size:12px;">📍 ${r.location} • ${r.date_needed}</div></div>
+            <span class="chip chip-stable">${r.workers_needed} needed</span>
+          </div>
+          <div class="flex-between" style="margin-top:10px;">
+            <b style="color:var(--leaf-700);">₹${r.rate_offered}/day</b>
+            <a href="tel:${r.contact.replace(/\\s/g,'')}" class="btn-sm btn btn-gold">📞 Contact</a>
+          </div>
+        </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Abhi koi open requirement nahi hai.</p></div>';
+    });
+}
+
+function postRequirement(){
+  const work_type = document.getElementById('reqWorkType').value;
+  const workers_needed = document.getElementById('reqWorkersNeeded').value;
+  const date_needed = document.getElementById('reqDateNeeded').value.trim();
+  const rate_offered = document.getElementById('reqRateOffered').value;
+  const location = document.getElementById('reqLoc').value;
+  const contact = document.getElementById('reqContact').value.trim();
+  if (!workers_needed || !rate_offered) return;
+  fetch('/api/labour_requirement', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({work_type, workers_needed, date_needed, rate_offered, location, contact})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'posted'){
+        document.getElementById('reqWorkersNeeded').value = '';
+        document.getElementById('reqDateNeeded').value = '';
+        document.getElementById('reqRateOffered').value = '';
+        document.getElementById('reqContact').value = '';
+        loadRequirements();
+      }
+    });
+}
+
+populateLabourLocs();
+</script>
+{% endblock %}

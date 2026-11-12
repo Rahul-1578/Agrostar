@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}e-NAM Info — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">e-NAM Integration Info</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="card">
+    <div class="card-title">🌐 What is e-NAM?</div>
+    <p class="mt-0">e-NAM (National Agriculture Market) is the government's online trading portal that links mandis across India into one unified digital market. Instead of only buyers physically present at your local mandi bidding on your produce, buyers from other integrated mandis can bid too — often meaning a better price through more competition.</p>
+    <p class="muted" style="margin-top:8px;font-size:12px;">Launched in 2016 • Portal: enam.gov.in</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📍 Is My Mandi Registered?</div>
+    <div class="field"><label>Location</label><select id="enamLoc" onchange="checkEnamStatus()"></select></div>
+    <div id="enamStatusResult"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 e-NAM at a Glance (National)</div>
+    <div class="flex-between" style="padding:6px 0;"><span class="muted">Mandis integrated</span><b id="enamMandis">--</b></div>
+    <div class="flex-between" style="padding:6px 0;"><span class="muted">States/UTs covered</span><b id="enamStates">--</b></div>
+    <div class="flex-between" style="padding:6px 0;"><span class="muted">Farmers registered</span><b id="enamFarmers">--</b></div>
+    <div class="flex-between" style="padding:6px 0;"><span class="muted">Traders registered</span><b id="enamTraders">--</b></div>
+  </div>
+
+  <div class="section-title">How to Register</div>
+  <div class="card"><div class="card-title">1. Visit enam.gov.in</div><p class="mt-0">Click "Farmer Registration" and start the sign-up process.</p></div>
+  <div class="card"><div class="card-title">2. Provide Your Details</div><p class="mt-0">Aadhaar number, mobile number, state, and your nearest APMC/mandi.</p></div>
+  <div class="card"><div class="card-title">3. Add Bank Account</div><p class="mt-0">Add your bank account (IFSC + account number) — sale proceeds are paid directly here, no middleman involved.</p></div>
+  <div class="card"><div class="card-title">4. Verify with OTP</div><p class="mt-0">Confirm via OTP — your account becomes active immediately. Registration is completely free.</p></div>
+  <div class="card"><div class="card-title">5. Bring Produce for Assaying</div><p class="mt-0">At the mandi, your produce is quality-assayed before it goes up for online bidding, so buyers see a verified grade.</p></div>
+
+  <a href="https://enam.gov.in" target="_blank" class="btn btn-gold">Visit e-NAM Portal ↗</a>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateEnamLoc(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('enamLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    checkEnamStatus();
+  });
+}
+
+function checkEnamStatus(){
+  const location = document.getElementById('enamLoc').value;
+  fetch('/api/enam_status?location=' + encodeURIComponent(location)).then(r=>r.json()).then(d=>{
+    document.getElementById('enamStatusResult').innerHTML = d.is_enam_registered ? `
+      <div style="margin-top:10px;padding:10px;background:var(--leaf-200,#e4f4e6);border-radius:10px;">
+        ✅ <b>${location}</b> mandi is e-NAM registered — you can trade online here.
+      </div>` : `
+      <div style="margin-top:10px;padding:10px;background:#fdecea;border-radius:10px;">
+        ⚠️ <b>${location}</b> mandi is not yet e-NAM registered — check a nearby integrated mandi, or ask your mandi office about onboarding.
+      </div>`;
+
+    const s = d.national_stats;
+    document.getElementById('enamMandis').textContent = s.mandis_integrated.toLocaleString('en-IN');
+    document.getElementById('enamStates').textContent = s.states_uts_covered;
+    document.getElementById('enamFarmers').textContent = s.farmers_registered_crore + ' crore';
+    document.getElementById('enamTraders').textContent = s.traders_registered_lakh + ' lakh';
+  });
+}
+
+populateEnamLoc();
+</script>
+{% endblock %}

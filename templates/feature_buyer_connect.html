@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Buyer Connect — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Direct Mandi Bidding / Buyer Connect</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Bichauliya hatakar seedha buyer se judein — apni fasal bechne ke liye list karein, ya nearby buyers ki demand dekhein.</p>
+
+  <div class="card">
+    <div class="card-title">📢 List Your Produce for Sale</div>
+    <div class="field"><label>Crop</label>
+      <select id="pcCrop">
+        <option>Rice</option><option>Wheat</option><option>Maize</option><option>Tomato</option>
+        <option>Onion</option><option>Groundnut</option><option>Cotton</option><option>Sugarcane</option>
+      </select>
+    </div>
+    <div class="field"><label>Quantity (quintal)</label><input type="number" id="pcQty" min="1" placeholder="e.g. 20"></div>
+    <div class="field"><label>Asking price (₹/quintal)</label><input type="number" id="pcPrice" min="1" placeholder="e.g. 1500"></div>
+    <div class="field"><label>Location</label><select id="pcLoc"></select></div>
+    <button class="btn btn-primary" onclick="submitProduceListing()">List for Sale</button>
+  </div>
+  <div id="pcMatchResult"></div>
+
+  <div class="section-title">Open Buyer Requests Nearby</div>
+  <div class="field" style="margin-bottom:6px;"><input type="text" id="buyerFilter" placeholder="Filter by crop (e.g. Rice)" oninput="loadBuyerRequests()"></div>
+  <div id="buyerRequestList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+
+  <div class="section-title">Your Listed Produce</div>
+  <div id="myListingsList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateLocSelect(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('pcLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+  });
+}
+
+function loadBuyerRequests(){
+  const crop = document.getElementById('buyerFilter').value.trim();
+  fetch('/api/buyer_requests' + (crop ? '?crop=' + encodeURIComponent(crop) : ''))
+    .then(r=>r.json()).then(d=>{
+      if (!d.requests.length){
+        document.getElementById('buyerRequestList').innerHTML = '<div class="card center"><p class="mt-0 muted">Is crop ke liye abhi koi buyer request nahi hai.</p></div>';
+        return;
+      }
+      document.getElementById('buyerRequestList').innerHTML = d.requests.map(r => `
+        <div class="card">
+          <div class="flex-between">
+            <div>
+              <b>${r.buyer}</b>
+              <div class="muted" style="font-size:12px;">📍 ${r.location} • ${r.posted}</div>
+            </div>
+            <span class="chip chip-up">${r.crop}</span>
+          </div>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Wants ${r.quantity_quintal} quintal</span>
+            <b style="font-family:var(--font-display);color:var(--leaf-700);">₹${r.offer_price}/quintal</b>
+          </div>
+          <a href="tel:${r.contact.replace(/\\s/g,'')}" class="btn btn-gold" style="margin-top:12px;">📞 Contact ${r.contact}</a>
+        </div>`).join('');
+    });
+}
+
+function loadMyListings(){
+  fetch('/api/produce_listings').then(r=>r.json()).then(d=>{
+    if (!d.listings.length){
+      document.getElementById('myListingsList').innerHTML = '<div class="card center"><p class="mt-0 muted">Aapne abhi tak koi fasal list nahi ki hai.</p></div>';
+      return;
+    }
+    document.getElementById('myListingsList').innerHTML = d.listings.map(l => `
+      <div class="card flex-between">
+        <div><b>${l.crop}</b><div class="muted" style="font-size:12px;">📍 ${l.location} • ${l.posted}</div></div>
+        <div style="text-align:right;">
+          <div>${l.quantity_quintal} quintal</div>
+          <b style="color:var(--leaf-700);">₹${l.asking_price}/quintal</b>
+        </div>
+      </div>`).join('');
+  });
+}
+
+function submitProduceListing(){
+  const crop = document.getElementById('pcCrop').value;
+  const quantity_quintal = document.getElementById('pcQty').value;
+  const asking_price = document.getElementById('pcPrice').value;
+  const location = document.getElementById('pcLoc').value;
+  if (!quantity_quintal || !asking_price){ return; }
+  fetch('/api/produce_listing', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, quantity_quintal, asking_price, location})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status !== 'listed') return;
+      document.getElementById('pcQty').value = '';
+      document.getElementById('pcPrice').value = '';
+      let matchHtml = '';
+      if (d.matching_buyers && d.matching_buyers.length){
+        matchHtml = `<div class="card" style="border:2px solid var(--gold-500);">
+          <div class="card-title">🎯 Matching Buyers Found!</div>
+          ${d.matching_buyers.map(b => `<div class="flex-between" style="margin-top:6px;"><span>${b.buyer} — ₹${b.offer_price}/quintal</span><a href="tel:${b.contact.replace(/\\s/g,'')}" class="btn-sm btn btn-primary">Call</a></div>`).join('')}
+        </div>`;
+      }
+      document.getElementById('pcMatchResult').innerHTML = matchHtml;
+      loadMyListings();
+    });
+}
+
+populateLocSelect();
+loadBuyerRequests();
+loadMyListings();
+</script>
+{% endblock %}

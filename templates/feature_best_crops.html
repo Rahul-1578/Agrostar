@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Best Crops for You — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_best_crops">Best Crops for You</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted" data-i18n="best_crops_intro">Ranked by what actually grows well on your land AND what sells for a good profit — not just one or the other.</p>
+
+  <div class="card">
+    <div class="card-title">📍 <span data-i18n="card_your_location">Your Location</span></div>
+
+    <button class="locate-btn" id="locateBtn" onclick="detectLocation()">
+      📍 <span data-i18n="btn_detect_location">Detect My Location</span>
+    </button>
+    <div class="locate-status" id="locateStatus"></div>
+
+    <div class="field">
+      <label data-i18n="lbl_or_pick_manually">Or pick manually</label>
+      <select id="locSelect" onchange="findBestCrops()"></select>
+    </div>
+  </div>
+
+  <div id="resultMeta"></div>
+  <div id="topPicks"></div>
+  <div id="warnings"></div>
+  <div id="fullRanking"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateLocations(selectId, cb){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    const sel = document.getElementById(selectId);
+    sel.innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    if(cb) cb();
+  });
+}
+
+function detectLocation(){
+  const btn = document.getElementById('locateBtn');
+  const status = document.getElementById('locateStatus');
+  if (!('geolocation' in navigator)){
+    status.textContent = t('txt_geolocation_unsupported');
+    return;
+  }
+  btn.disabled = true;
+  status.textContent = t('txt_locating');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      fetch('/api/nearest_location', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({lat: pos.coords.latitude, lng: pos.coords.longitude})
+      }).then(r=>r.json()).then(d=>{
+        btn.disabled = false;
+        if (d.location){
+          document.getElementById('locSelect').value = d.location;
+          status.textContent = `📍 ${d.location} (~${d.distance_km} km)`;
+          findBestCrops();
+        } else {
+          status.textContent = t('txt_location_not_found');
+        }
+      }).catch(()=>{
+        btn.disabled = false;
+        status.textContent = t('txt_location_not_found');
+      });
+    },
+    () => {
+      btn.disabled = false;
+      status.textContent = t('txt_location_permission_denied');
+    }
+  );
+}
+
+function medal(i){
+  return i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : `#${i+1}`;
+}
+
+function findBestCrops(){
+  const loc = document.getElementById('locSelect').value || 'Bhubaneswar (City Centre)';
+  document.getElementById('resultMeta').innerHTML = `<div class="skeleton skeleton-line" style="height:18px;width:60%;"></div>`;
+  document.getElementById('topPicks').innerHTML = '';
+  document.getElementById('warnings').innerHTML = '';
+  document.getElementById('fullRanking').innerHTML = '';
+
+  fetch('/api/best_crops_for_location', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({location: loc})
+  }).then(r=>r.json()).then(d=>{
+    document.getElementById('resultMeta').innerHTML =
+      `<p class="muted" style="margin:4px 0 14px;">🗺️ ${d.location} — ${d.soil_type} ${t('txt_soil').toLowerCase()}, ${d.climate_zone}</p>`;
+
+    const top3 = d.ranking.slice(0, 3);
+    const warns = d.ranking.filter(r => r.poor_fit_high_profit);
+    const rest = d.ranking.slice(3);
+
+    document.getElementById('topPicks').innerHTML =
+      `<div class="section-title">🏆 ${t('sec_best_for_you')}</div>` +
+      top3.map((r, i) => `
+        <div class="rank-card">
+          <div class="rc-top">
+            <span class="rc-medal">${medal(i)}</span>
+            <span class="rc-name">${r.crop}</span>
+            <span class="rc-price">₹${r.price_per_quintal.toLocaleString('en-IN')}/${t('unit_quintal')}</span>
+          </div>
+          <div class="rc-scores">
+            <div class="score-pill grow"><div class="sp-label">${t('lbl_grow_fit')}</div><div class="sp-value">${r.grow_score}%</div></div>
+            <div class="score-pill profit"><div class="sp-label">${t('lbl_profit')}</div><div class="sp-value">${r.profit_score}%</div></div>
+            <div class="score-pill overall"><div class="sp-label">${t('lbl_overall')}</div><div class="sp-value">${r.overall_score}%</div></div>
+          </div>
+          <p class="rc-note">${r.fit_note} · ${t('txt_demand')}: ${r.demand}</p>
+        </div>`).join('');
+
+    if (warns.length){
+      document.getElementById('warnings').innerHTML =
+        `<div class="section-title">⚠️ ${t('sec_high_profit_poor_fit')}</div>` +
+        warns.map(r => `
+          <div class="warning-card">
+            <div class="wc-top">
+              <span class="wc-name">${r.crop}</span>
+              <span class="wc-badge">${t('lbl_profit')} ${r.profit_score}% · ${t('lbl_grow_fit')} ${r.grow_score}%</span>
+            </div>
+            <p>${r.fit_note}</p>
+          </div>`).join('');
+    }
+
+    if (rest.length){
+      document.getElementById('fullRanking').innerHTML =
+        `<div class="card">
+          <button class="why-toggle" onclick="toggleFullRanking()"><span id="fullRankIcon">▸</span> ${t('btn_see_full_ranking')}</button>
+          <div class="why-panel" id="fullRankPanel">
+            ${d.ranking.map((r, i) => `
+              <div class="full-rank-row">
+                <span class="frr-rank">${i+1}</span>
+                <span class="frr-name">${r.crop}</span>
+                <span class="frr-score">${r.overall_score}%</span>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }
+  });
+}
+
+function toggleFullRanking(){
+  document.getElementById('fullRankPanel').classList.toggle('open');
+  document.getElementById('fullRankIcon').textContent = document.getElementById('fullRankPanel').classList.contains('open') ? '▾' : '▸';
+}
+
+populateLocations('locSelect', findBestCrops);
+</script>
+{% endblock %}

@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% block title %}AASHA — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">🌾</div>
+    <div>
+      <h1 style="font-size:18px;">AASHA</h1>
+      <span class="muted" style="font-size:11px;" data-i18n="aasha_subtitle">Your farming assistant • Online</span>
+    </div>
+  </div>
+  <select id="langSelect" class="lang-sync-select" onchange="setLang(this.value)" style="border-radius:20px;border:1px solid var(--border);padding:6px 10px;font-size:12px;">
+    <option value="en">English</option>
+    <option value="hi">हिंदी</option>
+    <option value="or">ଓଡ଼ିଆ</option>
+  </select>
+</div>
+<div class="page-body" style="padding-bottom:150px;">
+  <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-soft);font-weight:600;margin-bottom:10px;">
+    <input type="checkbox" id="autoSpeak" checked style="width:auto;"> <span data-i18n="aasha_speak_toggle">🔊 Speak replies aloud</span>
+  </label>
+  <div class="chat-window" id="chatWindow">
+    <div class="msg msg-bot" data-i18n="aasha_welcome">Namaste! I'm AASHA 🌱 Ask me about weather, soil, fertilizer, pests, or market prices — in your own language, by typing or speaking.</div>
+  </div>
+</div>
+
+<div class="chat-input-bar">
+  <button class="icon-btn mic" id="micBtn" onclick="toggleMic()">🎤</button>
+  <input type="text" id="chatInput" data-i18n-placeholder="aasha_input_placeholder" placeholder="Type your question..." onkeydown="if(event.key==='Enter' && !event.isComposing)sendMessage()">
+  <button class="icon-btn send" id="sendBtn" onclick="sendMessage()">➤</button>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Defensive: if this fails for any reason (rare storage access issues),
+// don't let it break the rest of the script — sendMessage etc. must still
+// get defined below regardless.
+try {
+  const langSel = document.getElementById('langSelect');
+  if (langSel) langSel.value = getCurrentLang();
+} catch (e) {
+  console.warn('Language sync on load failed (non-fatal):', e);
+}
+
+const chatWin = document.getElementById('chatWindow');
+let waitingForReply = false;
+
+function appendMsg(html, isTyping){
+  const div = document.createElement('div');
+  div.className = 'msg msg-bot' + (isTyping ? ' typing-indicator' : '');
+  if (isTyping) { div.id = 'typingBubble'; div.innerHTML = '<span></span><span></span><span></span>'; }
+  else { div.innerHTML = html; }
+  chatWin.appendChild(div);
+  chatWin.scrollTop = chatWin.scrollHeight;
+  return div;
+}
+
+function sendMessage(){
+  // Guard against double-sends while a reply is still loading, and against
+  // the send button/Enter key firing before the DOM is fully ready.
+  if (waitingForReply) return;
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  const userDiv = document.createElement('div');
+  userDiv.className = 'msg msg-user';
+  userDiv.textContent = text; // textContent, not innerHTML — never breaks on special characters
+  chatWin.appendChild(userDiv);
+  input.value = '';
+  chatWin.scrollTop = chatWin.scrollHeight;
+
+  waitingForReply = true;
+  appendMsg('', true); // typing indicator
+
+  const langSelect = document.getElementById('langSelect');
+  const lang = langSelect ? langSelect.value : 'en';
+
+  fetch('/api/chatbot', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message: text, lang: lang})
+  })
+    .then(function(r){
+      if (!r.ok) throw new Error('Server returned ' + r.status);
+      return r.json();
+    })
+    .then(function(d){
+      const bubble = document.getElementById('typingBubble');
+      if (bubble) bubble.remove();
+      waitingForReply = false;
+
+      const replyText = d && d.reply ? d.reply : "Sorry, I didn't understand that. Try asking about weather, soil, or fertilizer.";
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'msg msg-bot';
+
+      const textSpan = document.createElement('span');
+      textSpan.textContent = replyText; // safe from any special characters
+
+      const speakBtn = document.createElement('button');
+      speakBtn.className = 'icon-btn';
+      speakBtn.style.cssText = 'width:26px;height:26px;font-size:12px;background:transparent;color:var(--leaf-700);margin-left:4px;vertical-align:middle;';
+      speakBtn.textContent = '🔊';
+      speakBtn.onclick = function(){ speak(replyText, lang); };
+
+      msgDiv.appendChild(textSpan);
+      msgDiv.appendChild(speakBtn);
+      chatWin.appendChild(msgDiv);
+      chatWin.scrollTop = chatWin.scrollHeight;
+
+      const autoSpeak = document.getElementById('autoSpeak');
+      if (autoSpeak && autoSpeak.checked) speak(replyText, lang);
+      resetIdleTimer();
+    })
+    .catch(function(err){
+      console.warn('Chatbot request failed:', err);
+      const bubble = document.getElementById('typingBubble');
+      if (bubble) bubble.remove();
+      waitingForReply = false;
+      appendMsg("⚠️ Sorry, I couldn't reach the server. Check your internet connection and that the app is running, then try again.");
+    });
+}
+
+// Global safety net: if any script error happens anywhere on this page,
+// show a visible, plain-language message instead of the chat silently
+// doing nothing — makes real-world debugging far easier than an invisible
+// console-only error.
+window.addEventListener('error', function(e){
+  console.error('Page error:', e.message, e.filename, e.lineno);
+  const win = document.getElementById('chatWindow');
+  if (win && !document.getElementById('jsErrorBanner')) {
+    const banner = document.createElement('div');
+    banner.id = 'jsErrorBanner';
+    banner.className = 'msg msg-bot';
+    banner.style.background = '#FBE7E4';
+    banner.style.color = '#C24A3B';
+    banner.textContent = '⚠️ Something went wrong loading this page. Please refresh (reload) the page and try again.';
+    win.appendChild(banner);
+  }
+});
+
+// ---------------- Voice OUTPUT: text-to-speech via Web Speech API ----------------
+// Real-world issue: most phones/browsers don't ship an Odia (or-IN) TTS
+// voice at all — setting utterance.lang alone then either stays silent or
+// mispronounces badly. This waits for the voice list to actually load
+// (Chrome loads it asynchronously — a common cause of "TTS does nothing on
+// first try"), tries to find a real Odia voice, and if none exists on this
+// device, falls back to Hindi (far more commonly installed on Indian
+// devices) rather than staying silent — with a one-time on-screen note so
+// the person understands it's a device limitation, not a broken feature.
+const SPEECH_LANG_CODES = { en: 'en-IN', hi: 'hi-IN', or: 'or-IN' };
+let cachedVoices = [];
+let voiceFallbackNoticeShown = false;
+
+function loadVoices(){
+  return new Promise(function(resolve){
+    let voices = window.speechSynthesis.getVoices();
+    if (voices.length) { resolve(voices); return; }
+    // Chrome loads voices asynchronously — wait for the event, with a
+    // timeout fallback in case the event never fires on some browsers.
+    const onVoicesChanged = function(){
+      voices = window.speechSynthesis.getVoices();
+      window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+      resolve(voices);
+    };
+    window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+    setTimeout(function(){ resolve(window.speechSynthesis.getVoices()); }, 1000);
+  });
+}
+
+function findVoiceForLang(voices, langCode){
+  const prefix = langCode.split('-')[0].toLowerCase();
+  return voices.find(function(v){ return v.lang && v.lang.toLowerCase() === langCode.toLowerCase(); })
+      || voices.find(function(v){ return v.lang && v.lang.toLowerCase().startsWith(prefix); });
+}
+
+async function speak(text, lang){
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel(); // stop any in-progress speech first
+
+  const voices = await loadVoices();
+  const targetLangCode = SPEECH_LANG_CODES[lang] || 'en-IN';
+  let voice = findVoiceForLang(voices, targetLangCode);
+  let effectiveLang = targetLangCode;
+
+  // No Odia voice on this device? Fall back to Hindi rather than silence —
+  // still Devanagari-adjacent phonetics, more intelligible than nothing.
+  if (!voice && lang === 'or') {
+    voice = findVoiceForLang(voices, 'hi-IN');
+    effectiveLang = 'hi-IN';
+    if (voice && !voiceFallbackNoticeShown) {
+      voiceFallbackNoticeShown = true;
+      appendMsg('🔇 This device has no Odia voice installed, so replies are being read aloud in Hindi instead. The text itself stays in Odia.');
+    }
+  }
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = effectiveLang;
+  if (voice) utterance.voice = voice;
+  utterance.rate = 0.95;
+
+  if (!voice) {
+    // No matching voice found at all (not even Hindi) — most likely no
+    // Indian-language TTS is installed on this device/OS. Let the browser
+    // use its default voice rather than staying silent, and say so once.
+    if (!voiceFallbackNoticeShown) {
+      voiceFallbackNoticeShown = true;
+      appendMsg('🔇 No Hindi/Odia voice is installed on this device, so I can\'t read replies aloud in your language yet — the text reply above is still accurate.');
+    }
+  }
+
+  window.speechSynthesis.speak(utterance);
+}
+
+// ---------------- Voice INPUT: speech-to-text via Web Speech API ----------------
+// Real voice input — no API key needed. Falls back to a text-only notice on
+// browsers/devices without support (e.g. some Android WebViews).
+const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let recording = false;
+
+if (SpeechRecognitionCtor) {
+  recognition = new SpeechRecognitionCtor();
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = function(event){
+    const transcript = event.results[0][0].transcript;
+    document.getElementById('chatInput').value = transcript;
+    sendMessage();
+  };
+  recognition.onerror = function(event){
+    console.warn('Speech recognition error:', event.error);
+    stopRecording();
+  };
+  recognition.onend = function(){ stopRecording(); };
+}
+
+function toggleMic(){
+  if (!recognition) {
+    alert('Voice input is not supported on this browser. Please type your question instead.');
+    return;
+  }
+  if (recording) {
+    recognition.stop();
+    stopRecording();
+  } else {
+    window.speechSynthesis.cancel(); // don't talk over the user
+    const langSelect = document.getElementById('langSelect');
+    recognition.lang = SPEECH_LANG_CODES[langSelect ? langSelect.value : 'en'] || 'en-IN';
+    recognition.start();
+    recording = true;
+    const btn = document.getElementById('micBtn');
+    btn.classList.add('recording');
+    btn.textContent = '●';
+  }
+}
+
+function stopRecording(){
+  recording = false;
+  const btn = document.getElementById('micBtn');
+  btn.classList.remove('recording');
+  btn.textContent = '🎤';
+}
+
+// ---------------------------------------------------------------------
+// PROACTIVE MESSAGING — AASHA doesn't just wait to be asked. She opens
+// with a real, data-backed greeting, and nudges the farmer with a useful
+// tip if they go quiet for a while, so the assistant feels alive.
+// ---------------------------------------------------------------------
+const PROACTIVE_TIPS = {
+  en: [
+    "💡 Tip: Testing your soil every season (not just once a year) catches nutrient gaps before they hurt yield.",
+    "💡 Did you know? Mixing neem oil with your pesticide spray can cut chemical use while still protecting the crop.",
+    "💡 Reminder: Checking the 7-day forecast before irrigating can save you a full watering cycle if rain is coming.",
+    "💡 Tip: Rotating rice with a legume like moong dal next season naturally rebuilds soil nitrogen.",
+    "💡 Just checking in — need help with anything? I can check weather, prices, or your crop's growth stage anytime.",
+  ],
+  hi: [
+    "💡 सुझाव: हर सीज़न मिट्टी की जांच कराएं (साल में एक बार नहीं) — पोषक तत्वों की कमी उपज खराब करने से पहले पकड़ में आ जाती है।",
+    "💡 क्या आप जानते हैं? कीटनाशक स्प्रे में नीम तेल मिलाने से फसल सुरक्षित रहते हुए भी रसायन का उपयोग कम होता है।",
+    "💡 याद दिलाना है: सिंचाई से पहले 7-दिन का पूर्वानुमान देख लें — बारिश आने वाली हो तो एक पूरा पानी चक्र बच सकता है।",
+    "💡 सुझाव: अगले सीज़न धान के साथ मूंग जैसी दलहनी फसल लगाने से मिट्टी में नाइट्रोजन प्राकृतिक रूप से वापस आती है।",
+    "💡 बस पूछ रही हूं — किसी चीज़ में मदद चाहिए? मैं कभी भी मौसम, भाव, या आपकी फसल की अवस्था बता सकती हूं।",
+  ],
+  or: [
+    "💡 ପରାମର୍ଶ: ପ୍ରତି ଋତୁରେ ମାଟି ପରୀକ୍ଷା କରାନ୍ତୁ (ବର୍ଷକୁ ଥରେ ନୁହେଁ) — ପୋଷକ ତତ୍ତ୍ୱର ଅଭାବ ଅମଳ ଖରାପ ହେବା ପୂର୍ବରୁ ଧରା ପଡ଼େ।",
+    "💡 ଆପଣ ଜାଣନ୍ତି କି? କୀଟନାଶକ ସ୍ପ୍ରେରେ ନିମ୍ବ ତେଲ ମିଶାଇଲେ ଫସଲ ସୁରକ୍ଷିତ ରହିବା ସହିତ ରାସାୟନିକ ବ୍ୟବହାର କମିଯାଏ।",
+    "💡 ମନେ ପକାଇବା: ଜଳସେଚନ ପୂର୍ବରୁ ୭-ଦିନିଆ ପୂର୍ବାନୁମାନ ଦେଖନ୍ତୁ — ବର୍ଷା ଆସୁଥିଲେ ଏକ ସମ୍ପୂର୍ଣ୍ଣ ଜଳସେଚନ ଚକ୍ର ବଞ୍ଚିପାରେ।",
+    "💡 ପରାମର୍ଶ: ପରବର୍ତ୍ତୀ ଋତୁରେ ଧାନ ସହିତ ମୁଗ ଭଳି ଡାଲି ଫସଲ ବୁଣିଲେ ମାଟିରେ ନାଇଟ୍ରୋଜେନ ପ୍ରାକୃତିକ ଭାବେ ପୁନଃସ୍ଥାପିତ ହୁଏ।",
+    "💡 ବସ୍ ପଚାରୁଛି — କୌଣସି ସାହାଯ୍ୟ ଦରକାର କି? ମୁଁ ଯେକୌଣସି ସମୟରେ ପାଣିପାଗ, ଦର, କିମ୍ବା ଆପଣଙ୍କ ଫସଲର ଅବସ୍ଥା କହିପାରିବି।",
+  ],
+};
+
+let idleTimer = null;
+function resetIdleTimer(){
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(function(){
+    const lang = getCurrentLang();
+    const tips = PROACTIVE_TIPS[lang] || PROACTIVE_TIPS.en;
+    const tip = tips[Math.floor(Math.random() * tips.length)];
+    appendMsg(tip);
+  }, 45000); // nudge after 45s of silence
+}
+
+const QUICK_UPDATE_PREFIX = { en: "🌤️ Quick update before you ask: ", hi: "🌤️ पूछने से पहले एक अपडेट: ", or: "🌤️ ପଚାରିବା ପୂର୍ବରୁ ଏକ ଅପଡେଟ୍: " };
+
+// On page load, AASHA proactively greets with something useful based on
+// real weather data — not just a static "hello" — after a short pause so
+// it doesn't feel like a jump-scare.
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    const lang = getCurrentLang();
+    fetch('/api/weather?lang=' + lang).then(function(r){ return r.json(); }).then(function(d){
+      if (d && d.irrigation_advice) {
+        const prefix = QUICK_UPDATE_PREFIX[lang] || QUICK_UPDATE_PREFIX.en;
+        appendMsg(prefix + d.irrigation_advice);
+      }
+      resetIdleTimer();
+    }).catch(function(){ resetIdleTimer(); });
+  }, 1800);
+});
+
+['keydown', 'click', 'touchstart'].forEach(function(evt){
+  document.addEventListener(evt, resetIdleTimer);
+});
+</script>
+{% endblock %}

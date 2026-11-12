@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Nearest Mandi — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Nearest Mandi Locator</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Konsi mandi sabse paas hai aur wahan tak kitna time lagega — dekhein.</p>
+
+  <button class="btn btn-gold" onclick="useMyLocation()">📍 Use My Current Location</button>
+  <div class="field" style="margin-top:10px;"><label>Or select location manually</label><select id="mandiLoc" onchange="loadMandis()"></select></div>
+  <div class="field"><label>Filter by crop</label>
+    <select id="mandiCropFilter" onchange="loadMandis()">
+      <option value="">All crops</option>
+      <option>Rice</option><option>Onion</option><option>Wheat</option><option>Groundnut</option>
+      <option>Vegetables</option><option>Tomato</option><option>Maize</option><option>Pulses</option><option>Fish/Seafood</option>
+    </select>
+  </div>
+  <p class="muted" id="mandiLocationStatus" style="font-size:12px;"></p>
+
+  <div id="mandiList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let userLat = null, userLng = null;
+
+function populateMandiLocs(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('mandiLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    loadMandis();
+  });
+}
+
+function useMyLocation(){
+  const statusEl = document.getElementById('mandiLocationStatus');
+  if (!navigator.geolocation) {
+    statusEl.textContent = 'Geolocation is not supported on this device — using selected location instead.';
+    return;
+  }
+  statusEl.textContent = 'Getting your location...';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      statusEl.textContent = '✅ Using your current GPS location.';
+      loadMandis();
+    },
+    () => {
+      userLat = userLng = null;
+      statusEl.textContent = 'Could not get GPS location — using selected location instead.';
+      loadMandis();
+    }
+  );
+}
+
+function loadMandis(){
+  const crop = document.getElementById('mandiCropFilter').value;
+  const body = { crop };
+  if (userLat !== null && userLng !== null) {
+    body.lat = userLat;
+    body.lng = userLng;
+  } else {
+    body.location = document.getElementById('mandiLoc').value;
+  }
+  fetch('/api/nearest_mandis', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('mandiList').innerHTML = d.mandis.map((m, idx) => `
+        <div class="card" ${idx===0 ? 'style="border:2px solid var(--gold-500);"' : ''}>
+          ${idx===0 ? '<span class="chip chip-up">Nearest</span><br>' : ''}
+          <b>${m.name}</b>
+          <div class="muted" style="font-size:12px;margin-top:2px;">📍 ${m.location} • ${m.crops.join(', ')}</div>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Distance</span><b>${m.distance_km} km</b>
+          </div>
+          <div class="flex-between" style="margin-top:4px;">
+            <span class="muted">Est. travel time</span><b>~${m.eta_minutes} min</b>
+          </div>
+        </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Is crop ke liye koi mandi nahi mili.</p></div>';
+    });
+}
+
+populateMandiLocs();
+</script>
+{% endblock %}

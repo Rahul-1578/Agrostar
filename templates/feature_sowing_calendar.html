@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Sowing Calendar — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Rainfall-based Sowing Calendar</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Monsoon ke ideal window aur live rain forecast dono ko milakar batate hain — kab bona shuru karein.</p>
+
+  <div class="card">
+    <div class="field"><label>Crop</label><select id="scCrop" onchange="checkSowingCalendar()"></select></div>
+    <div class="field"><label>Location</label><select id="scLoc" onchange="checkSowingCalendar()"></select></div>
+  </div>
+
+  <div id="sowingResult">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const STATUS_LABELS = {
+  in_window: { icon: '✅', color: 'var(--leaf-700)', title: 'Ideal Sowing Window — Now' },
+  too_early: { icon: '⏳', color: 'var(--gold-600)', title: 'Too Early — Wait' },
+  missed: { icon: '⚠️', color: 'var(--alert-600)', title: 'Window Passed This Season' },
+};
+
+function populateSowingSelects(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('scLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    checkSowingCalendar();
+  });
+}
+
+function checkSowingCalendar(){
+  const crop = document.getElementById('scCrop').value;
+  const location = document.getElementById('scLoc').value;
+  document.getElementById('sowingResult').innerHTML = '<div class="card"><div class="skeleton skeleton-line"></div></div>';
+  fetch('/api/sowing_calendar', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, location})})
+    .then(r=>r.json()).then(d=>{
+      if (document.getElementById('scCrop').options.length === 0){
+        document.getElementById('scCrop').innerHTML = d.crops_available.map(c => `<option value="${c}" ${c===d.crop?'selected':''}>${c}</option>`).join('');
+      }
+      const lbl = STATUS_LABELS[d.calendar_status] || STATUS_LABELS.too_early;
+      document.getElementById('sowingResult').innerHTML = `
+        <div class="card">
+          <div class="card-title" style="color:${lbl.color};">${lbl.icon} ${lbl.title}</div>
+          <p class="mt-0">${d.calendar_message}</p>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Ideal window</span><b>${d.window_start} – ${d.window_end}</b>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🌧️ Live Moisture Check</div>
+          <p class="mt-0">${d.moisture_message}</p>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Rain expected (7 days)</span><b>${d.rain_next_7_days_mm} mm</b>
+          </div>
+        </div>`;
+    });
+}
+
+populateSowingSelects();
+</script>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Disease Outbreak Alerts — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Region-wide Disease Outbreak Alert</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Kisi kisan ne pest/disease report kiya to nearby sabko turant pata chalega — jaldi savdhani = kam nuksaan.</p>
+
+  <div class="card">
+    <div class="card-title">🚨 Report an Outbreak</div>
+    <div class="field"><label>Crop</label>
+      <select id="daCrop">
+        <option>Rice</option><option>Wheat</option><option>Maize</option><option>Tomato</option>
+        <option>Onion</option><option>Groundnut</option><option>Cotton</option><option>Sugarcane</option>
+      </select>
+    </div>
+    <div class="field"><label>Pest / disease name</label><input type="text" id="daIssue" placeholder="e.g. Brown Plant Hopper"></div>
+    <div class="field"><label>Severity</label>
+      <select id="daSeverity"><option>Low</option><option selected>Medium</option><option>High</option></select>
+    </div>
+    <div class="field"><label>Location</label><select id="daLoc"></select></div>
+    <button class="btn btn-primary" onclick="submitDiseaseAlert()">Send Alert to Nearby Farmers</button>
+  </div>
+
+  <div class="section-title">Alerts Near You</div>
+  <div class="field" style="margin-bottom:6px;"><select id="daLocFilter" onchange="loadDiseaseAlerts()"></select></div>
+  <div id="alertList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const SEVERITY_COLOR = { Low: 'chip-stable', Medium: 'chip-stable', High: 'chip-down' };
+
+function populateDaLocs(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    const opts = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    document.getElementById('daLoc').innerHTML = opts;
+    document.getElementById('daLocFilter').innerHTML = '<option value="">All locations</option>' + opts;
+    loadDiseaseAlerts();
+  });
+}
+
+function loadDiseaseAlerts(){
+  const location = document.getElementById('daLocFilter').value;
+  fetch('/api/disease_alerts' + (location ? '?location=' + encodeURIComponent(location) : ''))
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('alertList').innerHTML = d.alerts.map(a => `
+        <div class="card">
+          <div class="flex-between">
+            <div><b>🐛 ${a.issue}</b><div class="muted" style="font-size:12px;">🌾 ${a.crop} • 📍 ${a.location}</div></div>
+            <span class="chip ${SEVERITY_COLOR[a.severity] || 'chip-stable'}">${a.severity}</span>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:8px;">Reported by ${a.reported_by} • ${a.posted}</div>
+        </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Is area me abhi koi alert nahi hai.</p></div>';
+    });
+}
+
+function submitDiseaseAlert(){
+  const crop = document.getElementById('daCrop').value;
+  const issue = document.getElementById('daIssue').value.trim();
+  const severity = document.getElementById('daSeverity').value;
+  const location = document.getElementById('daLoc').value;
+  if (!issue) { document.getElementById('daIssue').focus(); return; }
+  fetch('/api/disease_alert', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, issue, severity, location})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'reported'){
+        document.getElementById('daIssue').value = '';
+        loadDiseaseAlerts();
+      }
+    });
+}
+
+populateDaLocs();
+</script>
+{% endblock %}

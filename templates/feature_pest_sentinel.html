@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Pest & Disease Sentinel Network — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:16px;" data-i18n="hdr_pest_sentinel">Pest &amp; Disease Sentinel Network</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+
+  <div class="card center">
+    <div style="width:100%;height:150px;border-radius:var(--radius-md);
+      background:var(--surface-soft);display:flex;align-items:center;justify-content:center;
+      font-size:42px;margin-bottom:10px;">📡🐛</div>
+    <span class="chip chip-stable" data-i18n="chip_proposed_concept">Proposed / R&amp;D Concept</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🎯 <span data-i18n="card_what_it_does">What it does</span></div>
+    <p class="mt-0" data-i18n="ps_what_it_does_body">A field-deployed network of low-cost cameras and sensors, paired with on-device (edge) AI,
+      that continuously watches crops for early signs of pest and disease outbreaks. Instead of a farmer
+      scouting one field manually, the network scans many plots around the clock and flags trouble the moment
+      it starts — well before it spreads.</p>
+  </div>
+
+  <div class="section-title" data-i18n="sec_try_demo">Try the demo</div>
+  <div class="card center">
+    <div id="preview" style="width:100%;height:180px;border-radius:var(--radius-md);
+      background:var(--surface-soft);display:flex;align-items:center;justify-content:center;
+      font-size:40px;color:var(--text-soft);margin-bottom:14px;">📷</div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;" onchange="preview(event)">
+    <button class="btn btn-primary" data-i18n="btn_upload_photo" onclick="document.getElementById('fileInput').click()">Upload Crop / Leaf Photo</button>
+    <p class="muted mt-0" style="font-size:12px;margin-top:8px;" data-i18n="txt_photo_hint">Only crop/leaf/field photos are accepted — other photos will be marked invalid.</p>
+  </div>
+
+  <div id="result"></div>
+
+  <div class="section-title" data-i18n="sec_how_it_works">How it works</div>
+  <div class="card">
+    <div class="card-title">📷 <span data-i18n="ps_step1">1. Sense</span></div>
+    <p class="mt-0" data-i18n="ps_step1_body">Solar-powered camera/sensor nodes placed across fields capture leaf, canopy, and pheromone-trap
+      images on a regular schedule.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">🧠 <span data-i18n="ps_step2">2. Detect on the edge</span></div>
+    <p class="mt-0" data-i18n="ps_step2_body">A lightweight AI model running directly on the device (no constant internet needed) classifies
+      pest and disease signs locally, so alerts still work in low-connectivity villages.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">🗺️ <span data-i18n="ps_step3">3. Map hotspots</span></div>
+    <p class="mt-0" data-i18n="ps_step3_body">Detections from multiple nodes are combined to identify outbreak hotspots and predict the
+      likely direction of spread across neighbouring farms.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">💊 <span data-i18n="ps_step4">4. Guide the response</span></div>
+    <p class="mt-0" data-i18n="ps_step4_body">Instead of blanket spraying, the system recommends precise, localized bio-intervention —
+      the right treatment, right dose, right spot — cutting pesticide overuse.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">🔔 <span data-i18n="ps_step5">5. Alert the farmer</span></div>
+    <p class="mt-0" data-i18n="ps_step5_body">Simple local-language alerts (voice/SMS/app) reach the farmer with what was found and what
+      to do next — designed for the same AASHA multilingual assistant already in AgroStar.</p>
+  </div>
+
+  <div class="section-title" data-i18n="sec_why_it_matters">Why it matters</div>
+  <div class="card">
+    <p class="mt-0" data-i18n="ps_why_it_matters_body">Early detection can save entire harvests, reduces unnecessary pesticide spraying (better for
+      soil, water, and farmer health), and turns pest management from reactive fire-fighting into proactive,
+      data-driven prevention — at a cost small and marginal farmers can actually afford.</p>
+  </div>
+
+  <div class="section-title" data-i18n="sec_fits_agrostar">Fits into AgroStar</div>
+  <div class="card">
+    <p class="mt-0"><span data-i18n="ps_fits_agrostar_body">This complements the existing</span> <a href="/feature/pest-detection" data-i18n="nav_pest_detection_link">Pest &amp; Disease Detection</a><span data-i18n="ps_fits_agrostar_body2"> feature — that tool diagnoses a single uploaded photo on demand, while the Sentinel Network automates and
+      scales that detection continuously across a whole field or village.</span></p>
+  </div>
+
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function preview(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('preview').innerHTML = `<img src="${ev.target.result}" style="width:100%;height:180px;object-fit:cover;border-radius:var(--radius-md);">`;
+    analyze(file);
+  };
+  reader.readAsDataURL(file);
+}
+function analyze(file){
+  document.getElementById('result').innerHTML = `
+    <div class="card">
+      <div class="skeleton skeleton-line" style="height:20px;width:70%;"></div>
+      <div class="skeleton skeleton-line short" style="margin-top:10px;"></div>
+    </div>`;
+  const formData = new FormData();
+  formData.append('photo', file);
+  fetch('/api/pest_sentinel_analyze', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(d => {
+      console.log('Sentinel analyze debug:', d.debug, 'green_ratio:', d.green_ratio);
+      if(d.debug === 'pillow_not_installed'){
+        console.warn('Pillow is not installed on the server — every photo will show as valid. Run: pip install -r requirements.txt and restart the server.');
+      }
+      if(!d.valid){
+        document.getElementById('result').innerHTML = `
+          <div class="card">
+            <div class="flex-between"><div class="card-title">⚠️ ${t('card_invalid_photo')}</div><span class="chip chip-down">${t('chip_rejected')}</span></div>
+            <p class="mt-0">${d.message}</p>
+          </div>`;
+        return;
+      }
+      document.getElementById('result').innerHTML = `
+        <div class="card">
+          <div class="flex-between"><div class="card-title">🔍 ${t('card_diagnosis')}</div><span class="chip chip-down">${d.confidence}</span></div>
+          <div style="font-family:var(--font-display);font-size:19px;color:var(--alert-600);margin-bottom:10px;">${d.issue}</div>
+          <div class="card-title" style="margin-top:8px;">💊 ${t('card_pesticide')}</div>
+          <p class="mt-0">${d.pesticide} — ${d.dosage}</p>
+          <div class="card-title" style="margin-top:8px;">💧 ${t('card_water')}</div>
+          <p class="mt-0">${d.water}</p>
+          <div class="card-title" style="margin-top:8px;">🌡️ ${t('card_temperature')}</div>
+          <p class="mt-0">${d.temperature}</p>
+          <button class="btn btn-outline btn-sm" style="margin-top:10px;" id="setReminderBtn" data-i18n="btn_set_reminder">Set Reminder</button>
+        </div>`;
+      document.getElementById('setReminderBtn').addEventListener('click', function(){
+        goSetReminder(d.issue, d.follow_up_days || 7);
+      });
+    })
+    .catch(() => {
+      document.getElementById('result').innerHTML = `
+        <div class="card"><p class="mt-0">${t('txt_analyze_error')}</p></div>`;
+    });
+}
+
+function goSetReminder(issue, days){
+  const params = new URLSearchParams({
+    crop: '',
+    task: `${t('task_pest_check')} — ${issue}`,
+    days: days,
+  });
+  location.href = `/feature/reminders?${params.toString()}`;
+}
+</script>
+{% endblock %}

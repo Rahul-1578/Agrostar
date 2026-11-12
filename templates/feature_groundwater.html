@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Groundwater Tracker — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Groundwater / Borewell Level Tracker</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Apne area ka water table pichhle 6 mahino me kaise badla hai, ye dekhein.</p>
+  <div class="field"><label>Location</label><select id="gwLoc" onchange="loadGroundwater()"></select></div>
+  <div id="gwResult">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const TREND_LABELS = {
+  declining: { icon: '📉', color: 'var(--alert-600)', text: 'Declining' },
+  rising: { icon: '📈', color: 'var(--leaf-700)', text: 'Recovering' },
+  stable: { icon: '➖', color: 'var(--gold-600)', text: 'Stable' },
+};
+
+function populateGwLoc(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('gwLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    loadGroundwater();
+  });
+}
+
+function loadGroundwater(){
+  const location = document.getElementById('gwLoc').value;
+  fetch('/api/groundwater_trend?location=' + encodeURIComponent(location)).then(r=>r.json()).then(d=>{
+    const lbl = TREND_LABELS[d.trend] || TREND_LABELS.stable;
+    const maxLevel = Math.max(...d.history.map(h => h.level_m));
+    document.getElementById('gwResult').innerHTML = `
+      <div class="card">
+        <div class="flex-between">
+          <div>
+            <div class="muted" style="font-size:12px;">Current level</div>
+            <div style="font-family:var(--font-display);font-size:26px;">${d.current_level_m} m</div>
+          </div>
+          <span class="chip" style="background:transparent;border:2px solid ${lbl.color};color:${lbl.color};">${lbl.icon} ${lbl.text}</span>
+        </div>
+        <p class="muted" style="margin-top:4px;font-size:12px;">${d.unit}</p>
+      </div>
+      <div class="card">
+        <div class="card-title">6-Month Trend</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;height:120px;">
+          ${d.history.map(h => `
+            <div style="flex:1;text-align:center;">
+              <div style="background:var(--leaf-500);border-radius:4px 4px 0 0;height:${Math.max(8, (h.level_m/maxLevel)*100)}px;" title="${h.level_m}m"></div>
+              <div class="muted" style="font-size:10px;margin-top:4px;">${h.month}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">💡 Advisory</div>
+        <p class="mt-0">${d.advisory}</p>
+      </div>`;
+  });
+}
+
+populateGwLoc();
+</script>
+{% endblock %}

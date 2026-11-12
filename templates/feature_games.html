@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Free Time — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_games">Free Time 🎮</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted" data-i18n="txt_games_intro">Kaam se thoda break? Yahan khelo aur seekho bhi.</p>
+
+  <a class="card" href="/feature/games-quiz" style="display:block;text-decoration:none;margin-top:14px;">
+    <div class="flex-between">
+      <div>
+        <div class="card-title" style="margin-bottom:4px;">🧠 <span data-i18n="hdr_quiz">Farming Quiz</span></div>
+        <span class="muted" data-i18n="txt_quiz_desc">Test your farming knowledge — 5 quick questions</span>
+      </div>
+      <span style="font-size:22px;">›</span>
+    </div>
+  </a>
+
+  <a class="card" href="/feature/games-memory" style="display:block;text-decoration:none;">
+    <div class="flex-between">
+      <div>
+        <div class="card-title" style="margin-bottom:4px;">🃏 <span data-i18n="hdr_memory">Crop Memory Match</span></div>
+        <span class="muted" data-i18n="txt_memory_desc">Flip cards, match the crop pairs, beat your best time</span>
+      </div>
+      <span style="font-size:22px;">›</span>
+    </div>
+  </a>
+</div>
+{% endblock %}

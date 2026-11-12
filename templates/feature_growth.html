@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Growth Monitoring — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_growth">Growth Stage Monitoring</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body" id="content">
+  <div class="card">
+    <div class="skeleton skeleton-line short"></div>
+    <div class="skeleton skeleton-line" style="height:20px;width:40%;margin-top:6px;"></div>
+    <div class="skeleton skeleton-line" style="margin-top:14px;"></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+fetch('/api/growth_stage').then(r=>r.json()).then(d=>{
+  const dotsHtml = d.stages.map((s,i)=>{
+    const dotClass = i < d.stage_index ? 'done' : (i === d.stage_index ? 'current' : '');
+    const lineClass = i < d.stage_index ? 'done' : '';
+    return `<div class="stage-dot ${dotClass}"></div>` + (i < d.stages.length-1 ? `<div class="stage-line ${lineClass}"></div>` : '');
+  }).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-title">🌾 ${d.crop} — ${t('card_current_stage')}</div>
+      <div style="font-family:var(--font-display);font-size:22px;color:var(--gold-600);">${d.current_stage}</div>
+      <div class="stage-track">${dotsHtml}</div>
+      <div class="flex-between muted" style="font-size:11px;">
+        ${d.stages.map(s=>`<span>${s}</span>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚠️ ${t('card_next_action')}</div>
+      <p class="mt-0">${d.next_action}</p>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;" id="setReminderBtn" data-i18n="btn_set_reminder">Set Reminder</button>
+    </div>
+  `;
+
+  // Wired up with addEventListener + a stored data reference instead of an
+  // inline onclick with JSON.stringify() embedded in an HTML attribute —
+  // that pattern breaks the moment next_action contains a double quote,
+  // since it prematurely closes the onclick="..." attribute and silently
+  // kills the click handler (exactly the "button does nothing" bug).
+  document.getElementById('setReminderBtn').addEventListener('click', function(){
+    goSetReminder(d.crop, d.next_action_days || 5, d.next_action);
+  });
+});
+
+function goSetReminder(crop, days, taskText){
+  const params = new URLSearchParams({
+    crop: crop,
+    task: taskText || `${t('task_fertilizer')} — ${crop}`,
+    days: days,
+  });
+  location.href = `/feature/reminders?${params.toString()}`;
+}
+</script>
+{% endblock %}

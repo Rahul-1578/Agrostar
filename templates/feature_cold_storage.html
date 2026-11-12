@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Cold Storage Finder — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Cold Storage Finder + Slot Booking</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Nearby cold storage me jagah dekhein aur seedha slot book karein — post-harvest nuksaan kam karein.</p>
+
+  <div class="field"><label>Location</label><select id="csLoc" onchange="loadColdStorages()"></select></div>
+  <div class="field"><label>Crop</label>
+    <select id="csCropFilter" onchange="loadColdStorages()">
+      <option value="">All crops</option>
+      <option>Potato</option><option>Onion</option><option>Tomato</option>
+      <option>Vegetables</option><option>Fruits</option><option>Groundnut</option>
+    </select>
+  </div>
+
+  <div id="csList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+
+  <div id="csBookingForm"></div>
+
+  <div class="section-title">Your Bookings</div>
+  <div id="csBookingsList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const STATUS_COLOR = { Available: 'chip-up', "Limited Space": 'chip-stable', Full: 'chip-down' };
+
+function populateCsLocs(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('csLoc').innerHTML = '<option value="">All locations</option>' + d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    loadColdStorages();
+  });
+}
+
+function loadColdStorages(){
+  const location = document.getElementById('csLoc').value;
+  const crop = document.getElementById('csCropFilter').value;
+  const params = new URLSearchParams();
+  if (location) params.set('location', location);
+  if (crop) params.set('crop', crop);
+  fetch('/api/cold_storages?' + params.toString()).then(r=>r.json()).then(d=>{
+    document.getElementById('csList').innerHTML = d.storages.map(s => `
+      <div class="card">
+        <div class="flex-between">
+          <div>
+            <b>${s.name}</b>
+            <div class="muted" style="font-size:12px;">📍 ${s.location} • ${s.crops.join(', ')}</div>
+          </div>
+          <span class="chip ${STATUS_COLOR[s.status] || 'chip-stable'}">${s.status}</span>
+        </div>
+        <div class="flex-between" style="margin-top:10px;">
+          <span class="muted">${s.available_quintal} / ${s.capacity_quintal} quintal free</span>
+          <b>₹${s.rate_per_quintal_per_day}/quintal/day</b>
+        </div>
+        ${s.available_quintal > 0 ? `<button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="showBookingForm(${s.id}, '${s.name.replace(/'/g,"")}', ${s.available_quintal}, ${s.rate_per_quintal_per_day})">Book a Slot</button>` : ''}
+      </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Is filter ke liye koi cold storage nahi mila.</p></div>';
+  });
+}
+
+function showBookingForm(storageId, name, available, rate){
+  document.getElementById('csBookingForm').innerHTML = `
+    <div class="card" style="border:2px solid var(--gold-500);">
+      <div class="card-title">📦 Book at ${name}</div>
+      <div class="field"><label>Crop</label><input type="text" id="csBookCrop" placeholder="e.g. Potato"></div>
+      <div class="field"><label>Quantity (quintal, max ${available})</label><input type="number" id="csBookQty" min="1" max="${available}" placeholder="e.g. 20"></div>
+      <div class="field"><label>Number of days</label><input type="number" id="csBookDays" min="1" value="7"></div>
+      <p class="muted" id="csEstimateNote">Rate: ₹${rate}/quintal/day</p>
+      <button class="btn btn-primary" onclick="submitBooking(${storageId})">Confirm Booking</button>
+    </div>`;
+  document.getElementById('csBookingForm').scrollIntoView({behavior:'smooth'});
+}
+
+function submitBooking(storageId){
+  const crop = document.getElementById('csBookCrop').value.trim();
+  const quantity_quintal = document.getElementById('csBookQty').value;
+  const days = document.getElementById('csBookDays').value;
+  if (!crop || !quantity_quintal || !days) return;
+  fetch('/api/cold_storage_booking', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({storage_id: storageId, crop, quantity_quintal, days})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'booked'){
+        document.getElementById('csBookingForm').innerHTML = `<div class="card"><p class="mt-0">✅ Booked! Total cost: <b>₹${d.booking.total_cost.toLocaleString('en-IN')}</b></p></div>`;
+        loadColdStorages();
+        loadCsBookings();
+      } else {
+        document.getElementById('csBookingForm').innerHTML = `<div class="card"><p class="mt-0" style="color:var(--alert-600);">${d.message}</p></div>`;
+      }
+    });
+}
+
+function loadCsBookings(){
+  fetch('/api/cold_storage_bookings').then(r=>r.json()).then(d=>{
+    if (!d.bookings.length){
+      document.getElementById('csBookingsList').innerHTML = '<div class="card center"><p class="mt-0 muted">Aapne abhi tak koi booking nahi ki hai.</p></div>';
+      return;
+    }
+    document.getElementById('csBookingsList').innerHTML = d.bookings.map(b => `
+      <div class="card flex-between">
+        <div><b>${b.crop}</b><div class="muted" style="font-size:12px;">${b.storage_name} • ${b.days} din</div></div>
+        <div style="text-align:right;">
+          <div>${b.quantity_quintal} quintal</div>
+          <b style="color:var(--leaf-700);">₹${b.total_cost.toLocaleString('en-IN')}</b>
+        </div>
+      </div>`).join('');
+  });
+}
+
+populateCsLocs();
+loadCsBookings();
+</script>
+{% endblock %}

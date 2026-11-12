@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Seed Variety Comparison — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Seed Variety Comparison</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Kis crop ke liye kaunsi variety best hai — yield, duration, disease-resistance, aur price compare karein.</p>
+
+  <div class="field"><label>Crop</label><select id="svCrop" onchange="loadVarieties()"></select></div>
+  <div id="varietiesList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function loadVarieties(){
+  const crop = document.getElementById('svCrop').value;
+  fetch('/api/seed_varieties' + (crop ? '?crop=' + encodeURIComponent(crop) : ''))
+    .then(r=>r.json()).then(d=>{
+      if (document.getElementById('svCrop').options.length === 0){
+        document.getElementById('svCrop').innerHTML = d.crops_available.map(c => `<option value="${c}" ${c===d.crop?'selected':''}>${c}</option>`).join('');
+      }
+      document.getElementById('varietiesList').innerHTML = d.varieties.map(v => `
+        <div class="card" ${v.recommended ? 'style="border:2px solid var(--gold-500);"' : ''}>
+          ${v.recommended ? '<span class="chip chip-up">⭐ Recommended</span><br>' : ''}
+          <b style="font-size:16px;">${v.name}</b>
+          <div class="muted" style="font-size:12px;">${v.season}</div>
+          <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div><span class="muted" style="font-size:11px;">Duration</span><br><b>${v.duration_days} days</b></div>
+            <div><span class="muted" style="font-size:11px;">Yield</span><br><b>${v.yield_quintal_per_acre} q/acre</b></div>
+            <div><span class="muted" style="font-size:11px;">Disease Resistance</span><br><b>${v.disease_resistance}</b></div>
+            <div><span class="muted" style="font-size:11px;">Water Need</span><br><b>${v.water_requirement}</b></div>
+          </div>
+          <div class="flex-between" style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;">
+            <span class="muted">Seed price</span><b style="color:var(--leaf-700);">₹${v.price_per_kg}/kg</b>
+          </div>
+        </div>`).join('');
+    });
+}
+
+loadVarieties();
+</script>
+{% endblock %}

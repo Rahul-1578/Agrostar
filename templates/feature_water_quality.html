@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Water Quality Checker — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Water Quality Checker</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Borewell/canal/pond ka paani irrigation ke liye theek hai ya nahi — salinity (EC) aur pH check karein.</p>
+
+  <div class="card">
+    <div class="field"><label>Water source</label>
+      <select id="wqSource"><option>Borewell</option><option>Canal</option><option>Pond</option></select>
+    </div>
+    <div class="field"><label>Location</label><select id="wqLoc"></select></div>
+    <button class="btn btn-primary" onclick="checkWaterQuality()">Check Water Quality</button>
+  </div>
+
+  <div id="wqResult"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateWqLoc(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('wqLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+  });
+}
+
+function checkWaterQuality(){
+  const source_type = document.getElementById('wqSource').value;
+  const location = document.getElementById('wqLoc').value;
+  document.getElementById('wqResult').innerHTML = '<div class="card"><div class="skeleton skeleton-line"></div></div>';
+
+  fetch('/api/water_quality_check', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({source_type, location})})
+    .then(r=>r.json()).then(d=>{
+      const overallColor = d.overall_safe ? 'var(--leaf-700)' : 'var(--alert-600)';
+      document.getElementById('wqResult').innerHTML = `
+        <div class="card">
+          <div class="card-title" style="color:${overallColor};">${d.overall_safe ? '✅ Safe for Irrigation' : '⚠️ Check Before Using'}</div>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Salinity (EC)</span><b>${d.ec_ds_per_m} dS/m — ${d.salinity_status}</b>
+          </div>
+          <p class="muted mt-0" style="font-size:13px;margin-top:2px;">${d.salinity_note}</p>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">pH</span><b>${d.ph} — ${d.ph_status}</b>
+          </div>
+          <p class="muted mt-0" style="font-size:13px;margin-top:2px;">${d.ph_note}</p>
+        </div>
+        ${d.salt_tolerant_crops.length ? `
+        <div class="card">
+          <div class="card-title">🌾 Salt-Tolerant Crop Options</div>
+          <p class="mt-0">${d.salt_tolerant_crops.join(', ')}</p>
+        </div>` : ''}`;
+    });
+}
+
+populateWqLoc();
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Crop Recommendation — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_crop_reco">Crop Recommendation</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="card">
+    <div class="card-title">🌱 <span data-i18n="card_your_conditions">Your conditions</span></div>
+    <div class="field"><label data-i18n="lbl_soil_type">Soil type</label>
+      <select id="soilType"><option>Loamy</option><option>Clay</option><option>Sandy</option><option>Red laterite</option></select>
+    </div>
+    <div class="field"><label data-i18n="lbl_climate_zone">Climate zone</label>
+      <select id="climateZone"><option>Humid subtropical</option><option>Semi-arid</option><option>Coastal</option></select>
+    </div>
+    <button class="btn btn-primary" data-i18n="btn_suggest_crops" onclick="recommend()">Suggest Crops</button>
+  </div>
+
+  <div id="result"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function recommend(){
+  const soilType = document.getElementById('soilType').value;
+  const climateZone = document.getElementById('climateZone').value;
+  fetch('/api/crop_recommendation', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({soil_type: soilType, climate_zone: climateZone})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('result').innerHTML = `<div class="section-title">${t('sec_best_matches')}</div>` +
+        d.recommendations.map(c=>`
+          <div class="card flex-between">
+            <div><b>${c.crop}</b><div class="muted">${c.reason}</div></div>
+            <span class="chip chip-up">${c.suitability}</span>
+          </div>`).join('') +
+        `<div class="card">
+          <button class="why-toggle" onclick="toggleWhy()"><span id="whyIcon">▸</span> ${t('btn_why_crops')}</button>
+          <div class="why-panel" id="whyPanel">
+            ${d.factors.map(f=>`
+              <div class="why-row">
+                <span>${f.name}</span>
+                <span class="why-weight ${f.weight}">${f.weight}</span>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    });
+}
+function toggleWhy(){
+  document.getElementById('whyPanel').classList.toggle('open');
+  document.getElementById('whyIcon').textContent = document.getElementById('whyPanel').classList.contains('open') ? '▾' : '▸';
+}
+</script>
+{% endblock %}

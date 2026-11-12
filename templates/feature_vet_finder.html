@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Vet Finder — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Nearby Vet Finder</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+
+  <div class="card center" style="border:2px solid var(--alert-600);">
+    <div class="muted" style="font-size:12px;">🚨 24x7 Emergency Veterinary Helpline (Govt of India)</div>
+    <div style="font-family:var(--font-display);font-size:32px;color:var(--alert-600);" id="helplineNumber">1962</div>
+    <a href="tel:1962" class="btn btn-primary" style="margin-top:8px;">📞 Call Now</a>
+  </div>
+
+  <p class="muted">Pashu abhi bimar ho gaya? Nearby vet dhoondein — distance aur contact turant dekhein.</p>
+
+  <button class="btn btn-gold" onclick="useMyLocation()">📍 Use My Current Location</button>
+  <div class="field" style="margin-top:10px;"><label>Or select location manually</label><select id="vetLoc" onchange="loadVets()"></select></div>
+  <p class="muted" id="vetLocationStatus" style="font-size:12px;"></p>
+
+  <div id="vetsList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let userLat = null, userLng = null;
+
+function populateVetLocs(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('vetLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    loadVets();
+  });
+}
+
+function useMyLocation(){
+  const statusEl = document.getElementById('vetLocationStatus');
+  if (!navigator.geolocation) {
+    statusEl.textContent = 'Geolocation is not supported on this device — using selected location instead.';
+    return;
+  }
+  statusEl.textContent = 'Getting your location...';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      statusEl.textContent = '✅ Using your current GPS location.';
+      loadVets();
+    },
+    () => {
+      userLat = userLng = null;
+      statusEl.textContent = 'Could not get GPS location — using selected location instead.';
+      loadVets();
+    }
+  );
+}
+
+function loadVets(){
+  const body = {};
+  if (userLat !== null && userLng !== null) {
+    body.lat = userLat;
+    body.lng = userLng;
+  } else {
+    body.location = document.getElementById('vetLoc').value;
+  }
+  fetch('/api/nearby_vets', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('helplineNumber').textContent = d.emergency_helpline;
+      document.getElementById('vetsList').innerHTML = d.vets.map((v, idx) => `
+        <div class="card" ${idx===0 ? 'style="border:2px solid var(--gold-500);"' : ''}>
+          ${idx===0 ? '<span class="chip chip-up">Nearest</span><br>' : ''}
+          <b>${v.name}</b>
+          <div class="muted" style="font-size:12px;margin-top:2px;">${v.specialization} • 📍 ${v.location}</div>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Distance</span><b>${v.distance_km} km</b>
+          </div>
+          ${v.emergency_24x7 ? '<span class="chip chip-up" style="margin-top:8px;">24x7 Emergency</span>' : ''}
+          <a href="tel:${v.contact.replace(/\\s/g,'')}" class="btn btn-gold" style="margin-top:12px;">📞 Call ${v.contact}</a>
+        </div>`).join('');
+    });
+}
+
+populateVetLocs();
+</script>
+{% endblock %}

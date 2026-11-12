@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Spray Advisory — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Weather-based Spray Advisory</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Spray karne se pehle check karein — agar baarish ya tez hawa aane wali hai to spray waste ho sakta hai.</p>
+
+  <div class="card">
+    <div class="field"><label>Location</label><select id="sprayLoc" onchange="checkSprayAdvisory()"></select></div>
+  </div>
+
+  <div id="sprayResult">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const VERDICT_LABELS = {
+  safe_to_spray: { icon: '✅', color: 'var(--leaf-700)', title: 'Good to Spray' },
+  wait_rain: { icon: '🌧️', color: 'var(--alert-600)', title: 'Wait — Rain Expected' },
+  wait_wind: { icon: '💨', color: 'var(--gold-600)', title: 'Wait — Too Windy' },
+};
+
+function populateSprayLoc(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('sprayLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    checkSprayAdvisory();
+  });
+}
+
+function checkSprayAdvisory(){
+  const location = document.getElementById('sprayLoc').value;
+  document.getElementById('sprayResult').innerHTML = '<div class="card"><div class="skeleton skeleton-line"></div></div>';
+  fetch('/api/spray_advisory', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({location})})
+    .then(r=>r.json()).then(d=>{
+      const lbl = VERDICT_LABELS[d.verdict] || VERDICT_LABELS.safe_to_spray;
+      document.getElementById('sprayResult').innerHTML = `
+        <div class="card">
+          <div class="card-title" style="color:${lbl.color};">${lbl.icon} ${lbl.title}</div>
+          <p class="mt-0">${d.message}</p>
+          <div class="flex-between" style="margin-top:10px;">
+            <span class="muted">Rain chance (next 12h)</span><b>${d.max_rain_chance_percent}%</b>
+          </div>
+          <div class="flex-between" style="margin-top:6px;">
+            <span class="muted">Max wind speed</span><b>${d.max_wind_kmph} km/h</b>
+          </div>
+        </div>`;
+    });
+}
+
+populateSprayLoc();
+</script>
+{% endblock %}

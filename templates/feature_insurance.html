@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Insurance & Loans — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_insurance">Insurance &amp; Loans</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+
+  <div class="card">
+    <div class="card-title">🛡️ <span data-i18n="card_crop_insurance">Crop Insurance (PMFBY)</span></div>
+    <div class="field"><label data-i18n="lbl_crop">Crop</label>
+      <select id="insCrop"><option>Rice</option><option>Wheat</option><option>Maize</option><option>Sugarcane</option><option>Groundnut</option><option>Cotton</option></select>
+    </div>
+    <div class="field"><label data-i18n="lbl_area">Area (hectares)</label><input type="number" id="insArea" value="1" min="0.1" step="0.1"></div>
+    <button class="btn btn-primary" data-i18n="btn_calc_premium" onclick="checkInsurance()">Calculate Premium</button>
+  </div>
+  <div id="insResult"></div>
+
+  <div class="card">
+    <div class="card-title">💳 <span data-i18n="card_kcc_loan">Kisan Credit Card Loan</span></div>
+    <div class="field"><label data-i18n="lbl_land_size">Land size (acres)</label><input type="number" id="loanLand" value="2" min="0.1" step="0.1"></div>
+    <div class="field" style="display:flex;align-items:center;gap:10px;">
+      <input type="checkbox" id="hasKcc" style="width:auto;"><label style="margin:0;" data-i18n="lbl_has_kcc">I already have a KCC</label>
+    </div>
+    <button class="btn btn-primary" data-i18n="btn_check_loan" onclick="checkLoan()">Check Loan Eligibility</button>
+  </div>
+  <div id="loanResult"></div>
+
+  <div class="card">
+    <div class="card-title">🧮 <span>EMI Calculator</span></div>
+    <div class="field"><label>Loan amount (₹)</label><input type="number" id="emiPrincipal" value="100000" min="1000" step="1000"></div>
+    <div class="field"><label>Interest rate (% per year)</label><input type="number" id="emiRate" value="7" min="1" step="0.5"></div>
+    <div class="field"><label>Tenure (months)</label><input type="number" id="emiTenure" value="12" min="1" max="120"></div>
+    <button class="btn btn-primary" onclick="calcEmi()">Calculate EMI</button>
+  </div>
+  <div id="emiResult"></div>
+
+  <div class="card">
+    <div class="card-title">📋 <span>File an Insurance Claim</span></div>
+    <p class="muted mt-0">Agar fasal me nuksaan hua hai (baarish, sookha, keet, ya olawrishti), to yahan se claim file karein.</p>
+    <div class="field"><label>Crop</label>
+      <select id="claimCrop"><option>Rice</option><option>Wheat</option><option>Maize</option><option>Sugarcane</option><option>Groundnut</option><option>Cotton</option></select>
+    </div>
+    <div class="field"><label>Area (hectares)</label><input type="number" id="claimArea" value="1" min="0.1" step="0.1"></div>
+    <div class="field"><label>Loss type</label>
+      <select id="claimLossType"><option>Drought</option><option>Flood</option><option>Pest Attack</option><option>Hailstorm</option><option>Other</option></select>
+    </div>
+    <div class="field"><label>Estimated loss (%)</label><input type="number" id="claimLossPercent" value="30" min="1" max="100"></div>
+    <button class="btn btn-primary" onclick="fileClaim()">File Claim</button>
+  </div>
+
+  <div class="section-title">Your Claims</div>
+  <div id="claimsList"></div>
+
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function checkInsurance(){
+  const crop = document.getElementById('insCrop').value;
+  const area = document.getElementById('insArea').value;
+  fetch('/api/insurance_check', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, area})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('insResult').innerHTML = `
+        <div class="card">
+          <div class="flex-between"><span class="muted">${t('lbl_sum_insured')}</span><b>₹${d.sum_insured.toLocaleString('en-IN')}</b></div>
+          <div class="flex-between" style="margin-top:6px;"><span class="muted">${t('lbl_your_premium')}</span><b style="color:var(--leaf-700);">₹${d.your_premium.toLocaleString('en-IN')}</b></div>
+          <p class="muted" style="margin-top:8px;">${d.note}</p>
+          <a href="https://pmfby.gov.in" target="_blank" class="btn btn-gold" style="margin-top:12px;">${t('btn_apply_pmfby')} ↗</a>
+        </div>`;
+    });
+}
+function checkLoan(){
+  const land_size = document.getElementById('loanLand').value;
+  const has_kcc = document.getElementById('hasKcc').checked;
+  fetch('/api/loan_eligibility', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({land_size, has_kcc})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('loanResult').innerHTML = `
+        <div class="card">
+          <div style="font-family:var(--font-display);font-size:26px;color:var(--leaf-700);">₹${d.eligible_amount.toLocaleString('en-IN')}</div>
+          <span class="muted">${t('lbl_at')} ${d.interest_rate}</span>
+          <div class="card-title" style="margin-top:12px;">${t('card_docs_needed')}</div>
+          <ul style="padding-left:18px;margin:0;line-height:1.8;">${d.documents_needed.map(x=>`<li>${x}</li>`).join('')}</ul>
+          <a href="https://www.myscheme.gov.in/schemes/kcc" target="_blank" class="btn btn-gold" style="margin-top:12px;">${t('btn_apply_kcc')} ↗</a>
+        </div>`;
+    });
+}
+function calcEmi(){
+  const principal = document.getElementById('emiPrincipal').value;
+  const annual_rate = document.getElementById('emiRate').value;
+  const tenure_months = document.getElementById('emiTenure').value;
+  fetch('/api/emi_calculator', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({principal, annual_rate, tenure_months})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'error') return;
+      document.getElementById('emiResult').innerHTML = `
+        <div class="card">
+          <div style="font-family:var(--font-display);font-size:26px;color:var(--leaf-700);">₹${d.emi.toLocaleString('en-IN')}<span style="font-size:13px;font-weight:400;color:var(--text-soft);">/month</span></div>
+          <div class="flex-between" style="margin-top:10px;"><span class="muted">Total interest</span><b>₹${d.total_interest.toLocaleString('en-IN')}</b></div>
+          <div class="flex-between" style="margin-top:6px;"><span class="muted">Total repayment</span><b>₹${d.total_payment.toLocaleString('en-IN')}</b></div>
+        </div>`;
+    });
+}
+
+const CLAIM_STATUS_COLOR = { "Filed": "chip-stable", "Under Review": "chip-stable", "Approved": "chip-up", "Payout Processed": "chip-up" };
+
+function fileClaim(){
+  const crop = document.getElementById('claimCrop').value;
+  const area = document.getElementById('claimArea').value;
+  const loss_type = document.getElementById('claimLossType').value;
+  const loss_percent = document.getElementById('claimLossPercent').value;
+  fetch('/api/insurance_claim', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, area, loss_type, loss_percent})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'filed') loadClaims();
+    });
+}
+
+function advanceClaim(claimId){
+  fetch(`/api/insurance_claim/${claimId}/advance`, {method:'POST'})
+    .then(r=>r.json()).then(()=>loadClaims());
+}
+
+function loadClaims(){
+  fetch('/api/insurance_claims').then(r=>r.json()).then(d=>{
+    if (!d.claims.length){
+      document.getElementById('claimsList').innerHTML = '<div class="card center"><p class="mt-0 muted">Koi claim file nahi kiya gaya hai.</p></div>';
+      return;
+    }
+    document.getElementById('claimsList').innerHTML = d.claims.map(c => `
+      <div class="card">
+        <div class="flex-between">
+          <div><b>${c.crop}</b> <span class="muted">(${c.loss_type})</span><div class="muted" style="font-size:12px;">Filed ${c.filed_at}</div></div>
+          <span class="chip ${CLAIM_STATUS_COLOR[c.status] || 'chip-stable'}">${c.status}</span>
+        </div>
+        <div class="flex-between" style="margin-top:10px;">
+          <span class="muted">Estimated payout</span><b style="color:var(--leaf-700);">₹${c.estimated_payout.toLocaleString('en-IN')}</b>
+        </div>
+        <div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;">
+          ${c.status_log.map(s => `<div class="muted" style="font-size:12px;padding:2px 0;">✓ <b>${s.status}</b> — ${s.date}: ${s.note}</div>`).join('')}
+        </div>
+        ${c.status !== 'Payout Processed' ? `<button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="advanceClaim(${c.id})">Check for Status Update</button>` : ''}
+      </div>`).join('');
+  });
+}
+
+loadClaims();
+</script>
+{% endblock %}

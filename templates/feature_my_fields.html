@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}My Fields — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">My Fields</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Agar aapke paas ek se zyada khet hain, to har field ka crop aur details alag track karein.</p>
+
+  <div class="card">
+    <div class="card-title">➕ Add a Field</div>
+    <div class="field"><label>Field name</label><input type="text" id="fieldName" placeholder="e.g. North Plot"></div>
+    <div class="field"><label>Crop</label>
+      <select id="fieldCrop">
+        <option>Rice</option><option>Wheat</option><option>Maize</option><option>Sugarcane</option>
+        <option>Groundnut</option><option>Cotton</option><option>Tomato</option><option>Onion</option><option>Fallow</option>
+      </select>
+    </div>
+    <div class="field"><label>Area (acres)</label><input type="number" id="fieldArea" min="0.1" step="0.1" placeholder="e.g. 1.5"></div>
+    <div class="field"><label>Location</label><select id="fieldLoc"></select></div>
+    <div class="field"><label>Sowing date</label><input type="date" id="fieldSownDate"></div>
+    <button class="btn btn-primary" onclick="addField()">Add Field</button>
+  </div>
+
+  <div class="section-title">Your Fields</div>
+  <div id="fieldsList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const FIELDS_KEY = 'agrostar_fields';
+
+function getFields(){
+  try { const raw = localStorage.getItem(FIELDS_KEY); return raw ? JSON.parse(raw) : []; }
+  catch(e){ return []; }
+}
+function saveFields(list){
+  try { localStorage.setItem(FIELDS_KEY, JSON.stringify(list)); } catch(e){}
+}
+
+function populateFieldLoc(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    document.getElementById('fieldLoc').innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+  });
+}
+
+function daysSince(dateStr){
+  if (!dateStr) return null;
+  const diff = Math.floor((new Date() - new Date(dateStr)) / (1000*60*60*24));
+  return diff >= 0 ? diff : null;
+}
+
+function addField(){
+  const name = document.getElementById('fieldName').value.trim();
+  const crop = document.getElementById('fieldCrop').value;
+  const area_acres = parseFloat(document.getElementById('fieldArea').value);
+  const location = document.getElementById('fieldLoc').value;
+  const sown_date = document.getElementById('fieldSownDate').value;
+
+  if (!name) { document.getElementById('fieldName').focus(); return; }
+  if (!area_acres || area_acres <= 0) { document.getElementById('fieldArea').focus(); return; }
+
+  const fields = getFields();
+  fields.unshift({ id: Date.now().toString(36), name, crop, area_acres, location, sown_date });
+  saveFields(fields);
+  document.getElementById('fieldName').value = '';
+  document.getElementById('fieldArea').value = '';
+  document.getElementById('fieldSownDate').value = '';
+  renderFields();
+}
+
+function deleteField(id){
+  saveFields(getFields().filter(f => f.id !== id));
+  renderFields();
+}
+
+function renderFields(){
+  const fields = getFields();
+  if (!fields.length){
+    document.getElementById('fieldsList').innerHTML = '<div class="card center"><p class="mt-0 muted">Abhi tak koi field add nahi kiya hai.</p></div>';
+    return;
+  }
+  document.getElementById('fieldsList').innerHTML = fields.map(f => {
+    const days = daysSince(f.sown_date);
+    return `
+    <div class="card">
+      <div class="flex-between">
+        <div>
+          <b>${f.name}</b>
+          <div class="muted" style="font-size:12px;">🌾 ${f.crop} • ${f.area_acres} acres${f.location ? ' • 📍 ' + f.location : ''}</div>
+          ${days !== null ? `<div class="muted" style="font-size:12px;">Sown ${days} day(s) ago</div>` : ''}
+        </div>
+        <button class="ri-delete-btn" onclick="deleteField('${f.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+populateFieldLoc();
+renderFields();
+</script>
+{% endblock %}

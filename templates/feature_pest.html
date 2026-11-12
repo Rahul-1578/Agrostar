@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Pest Detection — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_pest">Pest &amp; Disease Detection</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="card center">
+    <div id="preview" style="width:100%;height:180px;border-radius:var(--radius-md);
+      background:var(--surface-soft);display:flex;align-items:center;justify-content:center;
+      font-size:40px;color:var(--text-soft);margin-bottom:14px;">📷</div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;" onchange="preview(event)">
+    <button class="btn btn-primary" data-i18n="btn_upload_capture_leaf" onclick="document.getElementById('fileInput').click()">Upload / Capture Leaf Photo</button>
+    <p class="muted" style="font-size:11px;margin-top:10px;line-height:1.4;" data-i18n="txt_pest_photo_hint">
+      Only green crop / leaf or soil photos are accepted. Screenshots, documents and other images will be marked invalid.
+    </p>
+  </div>
+
+  <div id="result"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let selectedFile = null;
+let lastDiagnosis = null;
+let selectedReminderDays = 7;
+let selectedReminderAction = 'spray';
+
+function preview(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  selectedFile = file;
+  lastDiagnosis = null;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('preview').innerHTML =
+      `<img src="${ev.target.result}" style="width:100%;height:180px;object-fit:cover;border-radius:var(--radius-md);">`;
+    diagnose();
+  };
+  reader.readAsDataURL(file);
+}
+
+function diagnose(){
+  if (!selectedFile) return;
+
+  document.getElementById('result').innerHTML = `
+    <div class="card">
+      <div class="skeleton skeleton-line" style="height:20px;width:70%;"></div>
+      <div class="skeleton skeleton-line short" style="margin-top:10px;"></div>
+    </div>`;
+
+  const form = new FormData();
+  form.append('image', selectedFile);
+
+  fetch('/api/pest_detection', { method: 'POST', body: form })
+    .then(r => r.json())
+    .then(d => {
+      if (d.valid === false) {
+        lastDiagnosis = null;
+        const msg = (typeof getCurrentLang === 'function' && getCurrentLang() === 'hi' && d.message_hi)
+          ? d.message_hi
+          : (d.message || 'Invalid image. Please upload a crop leaf or soil photo.');
+        document.getElementById('result').innerHTML = `
+          <div class="card" style="border:1px solid var(--alert-600);background:var(--surface-soft);">
+            <div class="flex-between">
+              <div class="card-title" style="color:var(--alert-600);">⚠️ Invalid Image</div>
+              <span class="chip" style="background:var(--alert-600);color:#fff;">0%</span>
+            </div>
+            <p style="margin:8px 0 0;font-size:14px;line-height:1.5;color:var(--text);">${msg}</p>
+            <p class="muted" style="font-size:12px;margin-top:10px;">
+              ✅ Accepted: green leaves, crop canopy, field soil<br>
+              ❌ Rejected: screenshots, documents, faces, walls, other colours
+            </p>
+          </div>`;
+        return;
+      }
+
+      lastDiagnosis = d;
+      const suggested = d.follow_up_days || 7;
+      selectedReminderDays = suggested;
+      selectedReminderAction = 'spray';
+
+      // 3 day options: sooner / suggested / later
+      const dayOpts = [
+        { days: Math.max(1, Math.round(suggested / 2)), label: 'Sooner' },
+        { days: suggested, label: 'Suggested' },
+        { days: suggested * 2 > 21 ? 21 : suggested * 2, label: 'Later' },
+      ];
+      // unique days
+      const seen = new Set();
+      const uniqueDays = dayOpts.filter(o => {
+        if (seen.has(o.days)) return false;
+        seen.add(o.days);
+        return true;
+      });
+      while (uniqueDays.length < 3) {
+        const extra = [3, 7, 14].find(x => !seen.has(x));
+        if (extra == null) break;
+        uniqueDays.push({ days: extra, label: extra + 'd' });
+        seen.add(extra);
+      }
+
+      document.getElementById('result').innerHTML = `
+        <div class="card">
+          <div class="flex-between">
+            <div class="card-title">🔍 ${t('card_diagnosis')}</div>
+            <span class="chip chip-down">${d.confidence}</span>
+          </div>
+          <div style="font-family:var(--font-display);font-size:19px;color:var(--alert-600);margin-bottom:10px;">${d.issue}</div>
+          <div class="card-title" style="margin-top:8px;">💊 ${t('card_treatment')}</div>
+          <p class="mt-0">${d.treatment}</p>
+
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+            <div class="card-title" style="margin-bottom:10px;">⏰ Set Reminder</div>
+
+            <!-- 3 action options -->
+            <p class="muted" style="font-size:12px;margin:0 0 6px;"><b>1. What to do</b></p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;" id="actionChips">
+              <button type="button" class="btn btn-sm rem-action selected" data-action="spray"
+                style="flex:1;min-width:90px;" onclick="pickAction('spray', this)">🧴 Spray</button>
+              <button type="button" class="btn btn-outline btn-sm rem-action" data-action="recheck"
+                style="flex:1;min-width:90px;" onclick="pickAction('recheck', this)">🔍 Re-check</button>
+              <button type="button" class="btn btn-outline btn-sm rem-action" data-action="custom"
+                style="flex:1;min-width:90px;" onclick="pickAction('custom', this)">✏️ Custom</button>
+            </div>
+
+            <!-- 3 day options -->
+            <p class="muted" style="font-size:12px;margin:0 0 6px;"><b>2. After how many days</b></p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;" id="dayChips">
+              ${uniqueDays.map((o, i) => `
+                <button type="button" class="btn btn-sm rem-day ${o.days === suggested ? '' : 'btn-outline'}"
+                  data-days="${o.days}"
+                  style="flex:1;min-width:80px;${o.days === suggested ? '' : ''}"
+                  onclick="pickDays(${o.days}, this)">
+                  ${o.days} days<br><span style="font-size:10px;opacity:0.8;">${o.label}</span>
+                </button>
+              `).join('')}
+            </div>
+
+            <button class="btn btn-primary" style="width:100%;" onclick="goSetReminder()">
+              ✅ Save Reminder
+            </button>
+          </div>
+        </div>`;
+    })
+    .catch(() => {
+      lastDiagnosis = null;
+      document.getElementById('result').innerHTML = `
+        <div class="card" style="border:1px solid var(--alert-600);">
+          <p style="color:var(--alert-600);margin:0;">Could not analyse the photo. Please try again.</p>
+        </div>`;
+    });
+}
+
+function pickAction(action, btn){
+  selectedReminderAction = action;
+  document.querySelectorAll('.rem-action').forEach(b => {
+    b.classList.remove('selected');
+    b.classList.add('btn-outline');
+  });
+  btn.classList.add('selected');
+  btn.classList.remove('btn-outline');
+}
+
+function pickDays(days, btn){
+  selectedReminderDays = days;
+  document.querySelectorAll('.rem-day').forEach(b => {
+    b.classList.add('btn-outline');
+  });
+  btn.classList.remove('btn-outline');
+}
+
+function goSetReminder(){
+  if (!lastDiagnosis) return;
+  const issue = lastDiagnosis.issue || 'Pest check';
+  const treatment = lastDiagnosis.treatment || '';
+  const days = selectedReminderDays || lastDiagnosis.follow_up_days || 7;
+
+  let task;
+  if (selectedReminderAction === 'spray') {
+    task = treatment
+      ? `Spray pesticide — ${issue}: ${treatment}`
+      : `Spray pesticide — ${issue}`;
+  } else if (selectedReminderAction === 'recheck') {
+    task = `Check for pests or disease — ${issue}`;
+  } else {
+    task = `Pest follow-up — ${issue}`;
+  }
+
+  const params = new URLSearchParams({
+    crop: 'Rice',
+    task: task,
+    days: String(days),
+  });
+  location.href = `/feature/reminders?${params.toString()}`;
+}
+</script>
+{% endblock %}

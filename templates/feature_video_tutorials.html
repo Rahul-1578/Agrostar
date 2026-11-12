@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Video Tutorials — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Video Tutorials Library</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Chhote, aasan videos — apni bhasha me — jo text se zyada samajhne me madad karte hain.</p>
+  <div class="field"><label>Language</label>
+    <select id="vtLang" class="lang-sync-select" onchange="loadVideos()">
+      <option value="en">English</option>
+      <option value="hi">हिंदी</option>
+    </select>
+  </div>
+  <div id="vtCategoryChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
+  <div id="videoList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let vtActiveCategory = '';
+
+function loadVideos(){
+  const lang = document.getElementById('vtLang').value;
+  fetch('/api/video_tutorials?lang=' + lang + (vtActiveCategory ? '&category=' + encodeURIComponent(vtActiveCategory) : ''))
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('vtCategoryChips').innerHTML = ['All', ...d.categories].map(c => `
+        <span class="chip ${((c==='All' && !vtActiveCategory) || c===vtActiveCategory) ? 'chip-up' : 'chip-stable'}" style="cursor:pointer;" onclick="vtActiveCategory='${c==='All'?'':c}';loadVideos();">${c}</span>`).join('');
+      document.getElementById('videoList').innerHTML = d.videos.map(v => `
+        <a class="card" style="display:block;text-decoration:none;color:inherit;" href="${v.search_url}" target="_blank">
+          <div class="flex-between">
+            <div>
+              <b>▶️ ${v.title}</b>
+              <div class="muted" style="font-size:12px;">${v.category} • ~${v.duration}</div>
+            </div>
+            <span style="font-size:20px;">↗</span>
+          </div>
+        </a>`).join('') || '<div class="card center"><p class="mt-0 muted">Is category me abhi koi video nahi hai.</p></div>';
+    });
+}
+
+loadVideos();
+</script>
+{% endblock %}

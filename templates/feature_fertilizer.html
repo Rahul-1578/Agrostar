@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Fertilizer Plan — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_fertilizer">Fertilizer &amp; Pesticide Plan</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="card">
+    <div class="field"><label data-i18n="lbl_crop">Crop</label>
+      <select id="crop"><option>Rice</option><option>Wheat</option><option>Maize</option><option>Sugarcane</option><option>Groundnut</option><option>Cotton</option></select>
+    </div>
+    <button class="btn btn-primary" data-i18n="btn_generate_plan" onclick="getPlan()">Generate Plan</button>
+  </div>
+
+  <div id="reminderCard" style="display:none;" class="alert-banner">⏰ <span id="reminderText"></span></div>
+  <button id="setReminderBtn" class="btn btn-outline" style="display:none;margin-bottom:16px;" onclick="goSetReminder()" data-i18n="btn_set_reminder">Set Reminder</button>
+  <div id="planList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let lastPlanCrop = 'Rice';
+let lastReminderDays = 4;
+
+function getPlan(){
+  const crop = document.getElementById('crop').value;
+  fetch('/api/fertilizer_plan', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop})})
+    .then(r=>r.json()).then(d=>{
+      lastPlanCrop = d.crop;
+      lastReminderDays = d.next_reminder_days || 4;
+      document.getElementById('reminderCard').style.display = 'flex';
+      document.getElementById('reminderText').textContent = d.next_reminder;
+      document.getElementById('setReminderBtn').style.display = 'block';
+      document.getElementById('planList').innerHTML = `<div class="section-title">${t('sec_stage_dosage')}</div>` +
+        d.plan.map(s=>`
+          <div class="card">
+            <div class="flex-between"><b>${s.stage}</b><span class="chip chip-stable">${s.days}</span></div>
+            <p class="muted mt-0" style="margin-top:6px;">${s.fertilizer}</p>
+          </div>`).join('');
+    });
+}
+
+function goSetReminder(){
+  const params = new URLSearchParams({
+    crop: lastPlanCrop,
+    task: `${t('task_fertilizer')} — ${lastPlanCrop}`,
+    days: lastReminderDays,
+  });
+  location.href = `/feature/reminders?${params.toString()}`;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Weather — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_weather">Weather Forecast</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="field">
+    <label data-i18n="lbl_your_location">Your location</label>
+    <select id="locSelect" onchange="loadWeather()"></select>
+  </div>
+
+  <!-- Current conditions from Open-Meteo -->
+  <div class="card" id="currentCard" style="display:none;text-align:center;">
+    <div style="font-size:42px;line-height:1;" id="currentIcon">⛅</div>
+    <div style="font-size:32px;font-weight:700;margin-top:4px;" id="currentTemp">--°</div>
+    <div class="muted" style="font-size:13px;margin-top:4px;" id="currentMeta"></div>
+    <div class="muted" style="font-size:11px;margin-top:8px;" id="dataSource"></div>
+  </div>
+
+  <div class="card" id="irrigationCard" style="display:none;">
+    <div class="card-title">💧 <span data-i18n="card_irrigation_advice">Irrigation Advice</span></div>
+    <p id="irrigationText" class="mt-0"></p>
+  </div>
+
+  <div class="section-title" data-i18n="sec_7day_forecast">7-Day Forecast</div>
+  <div id="forecastList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateLocations(selectId, cb){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    const sel = document.getElementById(selectId);
+    sel.innerHTML = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    if(cb) cb();
+  });
+}
+
+function loadWeather(){
+  const loc = document.getElementById('locSelect').value || 'Bhubaneswar (City Centre)';
+  const lang = (typeof getCurrentLang === 'function') ? getCurrentLang() : 'en';
+  fetch('/api/weather?location=' + encodeURIComponent(loc) + '&lang=' + encodeURIComponent(lang))
+    .then(r=>r.json())
+    .then(d=>{
+      // Current conditions
+      const cur = d.current || {};
+      if (cur.temp != null) {
+        document.getElementById('currentCard').style.display = 'block';
+        document.getElementById('currentIcon').textContent = cur.icon || '⛅';
+        document.getElementById('currentTemp').textContent = Math.round(cur.temp) + '°C';
+        const parts = [];
+        if (cur.humidity != null) parts.push('💧 ' + cur.humidity + '% humidity');
+        if (cur.wind_speed != null) parts.push('💨 ' + cur.wind_speed + ' km/h');
+        if (cur.precipitation != null && cur.precipitation > 0) parts.push('🌧 ' + cur.precipitation + ' mm');
+        document.getElementById('currentMeta').textContent = parts.join(' · ');
+        document.getElementById('dataSource').textContent =
+          d.source === 'open-meteo'
+            ? '📡 Live data · Open-Meteo'
+            : '⚠️ Offline mock data (no network)';
+      } else {
+        document.getElementById('currentCard').style.display = 'none';
+      }
+
+      document.getElementById('irrigationCard').style.display = 'block';
+      document.getElementById('irrigationText').textContent = d.irrigation_advice || '';
+
+      document.getElementById('forecastList').innerHTML = (d.forecast || []).map(f => `
+        <div class="card flex-between" style="margin-bottom:10px;">
+          <div><b>${f.day}</b><div class="muted">${f.date}</div></div>
+          <div style="font-size:26px;">${f.icon || '⛅'}</div>
+          <div style="text-align:right;">
+            <div>${f.temp_max != null ? f.temp_max + '°' : '--'} / ${f.temp_min != null ? f.temp_min + '°' : '--'}</div>
+            <div class="muted">🌧 ${f.rain_chance != null ? f.rain_chance : 0}%${f.rain_mm ? ' · ' + f.rain_mm + ' mm' : ''}</div>
+          </div>
+        </div>`).join('');
+    })
+    .catch(() => {
+      document.getElementById('irrigationCard').style.display = 'block';
+      document.getElementById('irrigationText').textContent = 'Could not load weather. Check your internet connection.';
+    });
+}
+populateLocations('locSelect', loadWeather);
+</script>
+{% endblock %}

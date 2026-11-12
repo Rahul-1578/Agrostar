@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2D5F3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="AgroStar — AI-powered crop yield prediction, soil health, weather, and farm management for Indian farmers.">
+<script>
+// Apply saved theme (Dark/Light) before CSS renders, so there's no
+// flash of the wrong theme when a farmer has Dark Mode turned on.
+(function(){
+  try{
+    var t = localStorage.getItem('agrostar_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', t);
+    if (t === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#12180F');
+  }catch(e){}
+})();
+</script><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232D5F3E'/%3E%3Ctext x='50' y='68' font-size='58' font-family='sans-serif' font-weight='800' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<title>{% block title %}AgroStar{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="app-shell {% block shell_class %}{% endblock %}">
+  <div id="offlineBanner" class="offline-banner" style="display:none;">
+    <span>📡 Offline — showing last synced data<span id="lastSyncText"></span></span>
+    <a href="tel:18001234567" class="offline-help-btn">📞 Help</a>
+  </div>
+  {% block content %}{% endblock %}
+
+  <button class="help-fab" onclick="showInfo('help')" aria-label="Get help">🆘</button>
+
+  <div id="infoModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeInfo()">
+    <div class="modal-sheet">
+      <div class="flex-between">
+        <h3 id="infoTitle" style="margin:0;"></h3>
+        <button class="back-btn" onclick="closeInfo()" style="font-size:16px;">✕</button>
+      </div>
+      <div id="infoBody" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  {% block bottom_nav %}
+  <nav class="bottom-nav">
+    <a class="nav-item {% if active=='welcome' %}active{% endif %}" href="/">
+      <span class="nav-ic">🏠</span><span data-i18n="nav_home">Home</span>
+    </a>
+    <a class="nav-item {% if active=='features' %}active{% endif %}" href="/features">
+      <span class="nav-ic">🌾</span><span data-i18n="nav_features">Features</span>
+    </a>
+    <a class="nav-item {% if active=='chatbot' %}active{% endif %}" href="/chatbot">
+      <span class="nav-ic">💬</span><span data-i18n="nav_chat">AASHA</span>
+    </a>
+    <a class="nav-item {% if active=='dashboard' %}active{% endif %}" href="/dashboard">
+      <span class="nav-ic">📊</span><span data-i18n="nav_dashboard">Dashboard</span>
+    </a>
+    <a class="nav-item {% if active=='profile' %}active{% endif %}" href="/profile">
+      <span class="nav-ic">👤</span><span data-i18n="nav_profile">Profile</span>
+    </a>
+  </nav>
+  {% endblock %}
+</div>
+<script src="{{ url_for('static', filename='js/i18n.js') }}?v={{ config.get('ASSET_VERSION', '1') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ config.get('ASSET_VERSION', '1') }}"></script>
+<script src="{{ url_for('static', filename='js/reminders.js') }}?v={{ config.get('ASSET_VERSION', '1') }}"></script>
+<script>
+// Offline-first detection: shows a banner when connectivity drops so
+// farmers know they're seeing cached data, not stale-but-unlabelled data.
+function updateOfflineBanner(){
+  const banner = document.getElementById('offlineBanner');
+  if (!navigator.onLine) {
+    banner.style.display = 'flex';
+    fetch('/api/sync_status').then(r=>r.json()).then(d=>{
+      document.getElementById('lastSyncText').textContent = ' (last synced ' + d.last_synced + ')';
+    }).catch(()=>{});
+  } else {
+    banner.style.display = 'none';
+  }
+}
+window.addEventListener('online', updateOfflineBanner);
+window.addEventListener('offline', updateOfflineBanner);
+updateOfflineBanner();
+
+// Register service worker so the app shell (CSS/JS/icons) is cached and
+// still loads even with zero signal — key for rural connectivity.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/static/sw.js').catch(err => {
+      console.warn('Service worker registration failed:', err);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------
+// Human fallback support — always reachable, on every page, even before
+// login and even if the rest of the app breaks. Real toll-free calling
+// and WhatsApp need no internet data plan beyond a basic signal, so this
+// is the safety net for farmers when the app itself is unusable.
+// ---------------------------------------------------------------------
+window.INFO_CONTENT = {
+  help: {
+    title: 'Help & Support',
+    body: `
+      <p class="muted mt-0">App kaam nahi kar raha? Koi dikkat hai? Seedha humse baat karo:</p>
+      <a href="tel:18001234567" class="btn btn-primary" style="margin-top:14px;">📞 Call Toll-Free: 1800-123-4567</a>
+      <a href="https://wa.me/919142263537?text=${encodeURIComponent('Namaste, mujhe AgroStar app me madad chahiye')}" target="_blank" class="btn" style="margin-top:10px;background:#25D366;color:#fff;">💬 Chat on WhatsApp: +91 91422 63537</a>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title" style="margin-bottom:6px;">🇮🇳 Govt Kisan Call Centre</div>
+        <p class="mt-0 muted">24x7, all Indian languages, for any farming question — not just AgroStar.</p>
+        <a href="tel:18001801551" style="color:var(--leaf-700);font-weight:700;">1800-180-1551</a>
+      </div>
+      <p class="muted" style="margin-top:14px;">💬 Or just ask AASHA — type or speak your question, any time.</p>`
+  },
+  about: {
+    title: 'About AgroStar',
+    body: `
+      <p><b>AgroStar</b> — "Sow Smart, Reap Big" — is an AI-powered platform built to help farmers make better decisions with data: crop yield forecasts, soil health, weather-smart irrigation, and market prices, all in one place.</p>
+      <p class="muted" style="margin-top:10px;">Built for Smart India Hackathon under the theme Agriculture, Food Tech &amp; Rural Development.</p>
+      <p class="muted" style="margin-top:10px;">Version 1.0 • Made with Flask, Python &amp; care for India's farmers.</p>`
+  }
+};
+
+function showInfo(key){
+  const info = window.INFO_CONTENT[key];
+  if (!info) return;
+  document.getElementById('infoTitle').textContent = info.title;
+  document.getElementById('infoBody').innerHTML = info.body;
+  document.getElementById('infoModal').style.display = 'flex';
+}
+function closeInfo(){
+  document.getElementById('infoModal').style.display = 'none';
+}
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

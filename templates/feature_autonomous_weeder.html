@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Autonomous Precision Weeder — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:16px;" data-i18n="hdr_autonomous_weeder">Autonomous Precision Weeder</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+
+  <div class="card center">
+    <div style="width:100%;height:150px;border-radius:var(--radius-md);
+      background:var(--surface-soft);display:flex;align-items:center;justify-content:center;
+      font-size:42px;margin-bottom:10px;">🤖🌱</div>
+    <span class="chip chip-stable" data-i18n="chip_proposed_concept">Proposed / R&amp;D Concept</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🎯 <span data-i18n="card_what_it_does">What it does</span></div>
+    <p class="mt-0" data-i18n="aw_what_it_does_body">A small, low-cost autonomous machine that drives itself along crop rows, tells crop
+      seedlings apart from weeds, and removes weeds mechanically — without herbicide — built to be shared
+      across several small farms in a village rather than owned by one.</p>
+  </div>
+
+  <div class="section-title" data-i18n="sec_how_it_works">How it works</div>
+  <div class="card">
+    <div class="card-title">🧭 <span data-i18n="aw_step1">1. Row navigation</span></div>
+    <p class="mt-0" data-i18n="aw_step1_body">The machine uses onboard cameras/sensors to detect crop rows and drives itself down each
+      one, staying aligned even on uneven field terrain.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">👁️ <span data-i18n="aw_step2">2. Crop vs. weed ID</span></div>
+    <p class="mt-0" data-i18n="aw_step2_body">An onboard vision model tells the difference between the crop plant and surrounding weeds
+      in real time as it moves.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">✂️ <span data-i18n="aw_step3">3. Precision weeding</span></div>
+    <p class="mt-0" data-i18n="aw_step3_body">A small mechanical tool targets and removes only the identified weeds — close to the crop
+      row, without harming the crop and without spraying chemicals.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">🤝 <span data-i18n="aw_step4">4. Shared, cooperative use</span></div>
+    <p class="mt-0" data-i18n="aw_step4_body">Sized and priced for a farmer cooperative or custom-hiring center to own jointly and
+      schedule/booked turn-by-turn across member farms — bringing automation within reach of small landholdings
+      that could never justify buying one alone.</p>
+  </div>
+
+  <div class="section-title" data-i18n="sec_why_it_matters">Why it matters</div>
+  <div class="card">
+    <p class="mt-0" data-i18n="aw_why_it_matters_body">Weeding is one of the most labour-intensive and costly parts of crop care for small
+      farmers. A shared autonomous weeder cuts labour cost and herbicide use, and a cooperative ownership model
+      makes precision-agriculture hardware affordable at the scale of India's small and marginal farms.</p>
+  </div>
+
+  <div class="section-title" data-i18n="sec_fits_agrostar">Fits into AgroStar</div>
+  <div class="card">
+    <p class="mt-0"><span data-i18n="aw_fits_agrostar_body">Booking and cost-sharing for the machine could plug into the existing</span>
+      <a href="/feature/community" data-i18n="nav_community_link">Farmer Community</a><span data-i18n="aw_fits_agrostar_body2"> feature, letting nearby farmers coordinate a shared
+      weeding schedule directly in the app.</span></p>
+  </div>
+
+</div>
+{% endblock %}

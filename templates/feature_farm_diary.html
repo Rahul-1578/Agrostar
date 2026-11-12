@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Farm Diary — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Digital Farm Diary</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Roz kya kaam kiya — voice note record karein ya likhein. Ledger sirf paisa track karta hai, ye pura activity log rakhta hai.</p>
+
+  <div class="card">
+    <div class="card-title">🎙️ New Entry</div>
+    <div class="field"><label>Activity type</label>
+      <select id="diaryActivity">
+        <option>Spraying</option><option>Weeding</option><option>Irrigation</option>
+        <option>Harvesting</option><option>Sowing</option><option>Fertilizing</option><option>Other</option>
+      </select>
+    </div>
+    <div class="field"><label>Date</label><input type="date" id="diaryDate"></div>
+
+    <div class="field">
+      <label>Voice note</label>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="btn btn-gold" id="recordBtn" onclick="toggleRecording()">🎙️ Start Recording</button>
+        <span class="muted" id="recordStatus"></span>
+      </div>
+      <audio id="audioPreview" controls style="width:100%;margin-top:10px;display:none;"></audio>
+    </div>
+
+    <div class="field"><label>Or type a quick note</label><input type="text" id="diaryTextNote" placeholder="e.g. Field 2 me spray kiya"></div>
+    <button class="btn btn-primary" onclick="submitDiaryEntry()">Save Entry</button>
+    <p class="muted" id="diaryStatus" style="margin-top:8px;"></p>
+  </div>
+
+  <div class="field" style="margin-top:20px;"><label>Filter by activity</label>
+    <select id="diaryFilter" onchange="loadDiaryEntries()">
+      <option value="">All activities</option>
+      <option>Spraying</option><option>Weeding</option><option>Irrigation</option>
+      <option>Harvesting</option><option>Sowing</option><option>Fertilizing</option><option>Other</option>
+    </select>
+  </div>
+  <div class="section-title">Diary Entries</div>
+  <div id="diaryList"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordedBlob = null;
+
+document.getElementById('diaryDate').value = new Date().toISOString().split('T')[0];
+
+async function toggleRecording(){
+  const btn = document.getElementById('recordBtn');
+  const statusEl = document.getElementById('recordStatus');
+
+  if (mediaRecorder && mediaRecorder.state === 'recording'){
+    mediaRecorder.stop();
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    statusEl.textContent = 'Voice recording is not supported on this browser.';
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      recordedBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+      const audioEl = document.getElementById('audioPreview');
+      audioEl.src = URL.createObjectURL(recordedBlob);
+      audioEl.style.display = 'block';
+      btn.textContent = '🎙️ Re-record';
+      statusEl.textContent = '✅ Recorded — preview below.';
+      stream.getTracks().forEach(t => t.stop());
+    };
+    mediaRecorder.start();
+    btn.textContent = '⏹️ Stop Recording';
+    statusEl.textContent = 'Recording...';
+  } catch(e) {
+    statusEl.textContent = 'Could not access microphone — check permissions.';
+  }
+}
+
+function submitDiaryEntry(){
+  const activity_type = document.getElementById('diaryActivity').value;
+  const entry_date = document.getElementById('diaryDate').value;
+  const text_note = document.getElementById('diaryTextNote').value.trim();
+  const statusEl = document.getElementById('diaryStatus');
+
+  if (!text_note && !recordedBlob) { statusEl.textContent = 'Voice note record karein ya kuch likhein.'; return; }
+
+  const formData = new FormData();
+  formData.append('activity_type', activity_type);
+  formData.append('entry_date', entry_date);
+  formData.append('text_note', text_note);
+  if (recordedBlob) formData.append('audio', recordedBlob, 'diary_note.webm');
+
+  statusEl.textContent = 'Saving...';
+  fetch('/api/diary_entry', {method:'POST', body: formData})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'logged'){
+        statusEl.textContent = '✅ Saved!';
+        document.getElementById('diaryTextNote').value = '';
+        document.getElementById('audioPreview').style.display = 'none';
+        document.getElementById('recordBtn').textContent = '🎙️ Start Recording';
+        recordedBlob = null;
+        loadDiaryEntries();
+      } else {
+        statusEl.textContent = d.message || 'Save failed.';
+      }
+    });
+}
+
+function loadDiaryEntries(){
+  const activity_type = document.getElementById('diaryFilter').value;
+  fetch('/api/diary_entries' + (activity_type ? '?activity_type=' + encodeURIComponent(activity_type) : ''))
+    .then(r=>r.json()).then(d=>{
+      if (!d.entries.length){
+        document.getElementById('diaryList').innerHTML = '<div class="card center"><p class="mt-0 muted">Abhi tak koi diary entry nahi hai.</p></div>';
+        return;
+      }
+      document.getElementById('diaryList').innerHTML = d.entries.map(e => `
+        <div class="card">
+          <div class="flex-between">
+            <span class="chip chip-stable">${e.activity_type}</span>
+            <span class="muted" style="font-size:12px;">${e.entry_date}</span>
+          </div>
+          ${e.text_note ? `<p class="mt-0" style="margin-top:8px;">${e.text_note}</p>` : ''}
+          ${e.audio_url ? `<audio controls style="width:100%;margin-top:8px;"><source src="${e.audio_url}"></audio>` : ''}
+        </div>`).join('');
+    });
+}
+
+loadDiaryEntries();
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}PM-KUSUM Solar Pump — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">PM-KUSUM Solar Pump Scheme</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="card">
+    <div class="card-title">☀️ About the Scheme</div>
+    <p class="mt-0">PM-KUSUM (Pradhan Mantri Kisan Urja Suraksha evam Utthaan Mahabhiyan) helps farmers move from diesel to solar irrigation pumps. The Central Government gives a fixed <b>30% subsidy</b>, the State Government adds <b>at least 30% more</b>, and the farmer covers the remaining share — often just <b>10% upfront</b> with a bank loan covering the rest.</p>
+    <p class="muted" style="margin-top:8px;font-size:12px;">Exact state subsidy percentage varies — check your state's renewable energy portal for the current rate before applying.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🧮 Estimate Your Cost</div>
+    <div class="field"><label>Pump capacity (HP)</label>
+      <select id="pumpHp"><option value="2">2 HP</option><option value="3">3 HP</option><option value="5" selected>5 HP</option><option value="7.5">7.5 HP</option><option value="10">10 HP</option></select>
+    </div>
+    <div class="field"><label>State subsidy (%)</label><input type="number" id="stateSubsidyPercent" value="30" min="0" max="70"></div>
+    <div class="field" style="display:flex;align-items:center;gap:10px;">
+      <input type="checkbox" id="useBankLoan" checked style="width:auto;"><label style="margin:0;">Use bank loan for remaining farmer share (pay ~10% upfront)</label>
+    </div>
+    <button class="btn btn-primary" onclick="calcSolarSubsidy()">Calculate</button>
+  </div>
+
+  <div id="subsidyResult"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function calcSolarSubsidy(){
+  const pump_hp = document.getElementById('pumpHp').value;
+  const state_subsidy_percent = document.getElementById('stateSubsidyPercent').value;
+  const use_bank_loan = document.getElementById('useBankLoan').checked;
+
+  fetch('/api/solar_pump_subsidy', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({pump_hp, state_subsidy_percent, use_bank_loan})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('subsidyResult').innerHTML = `
+        <div class="card">
+          <div class="card-title">${d.pump_hp} HP Solar Pump — ₹${d.total_cost.toLocaleString('en-IN')}</div>
+          <div class="flex-between" style="margin-top:10px;"><span class="muted">Central subsidy (30%)</span><b style="color:var(--leaf-700);">₹${d.central_subsidy.toLocaleString('en-IN')}</b></div>
+          <div class="flex-between" style="margin-top:6px;"><span class="muted">State subsidy</span><b style="color:var(--leaf-700);">₹${d.state_subsidy.toLocaleString('en-IN')}</b></div>
+          <div class="flex-between" style="margin-top:6px;border-top:1px solid #eee;padding-top:8px;"><span class="muted">Your share</span><b>₹${d.farmer_share_total.toLocaleString('en-IN')}</b></div>
+          <div class="flex-between" style="margin-top:6px;"><span class="muted">Pay upfront</span><b style="color:var(--gold-600);">₹${d.farmer_upfront_payment.toLocaleString('en-IN')}</b></div>
+          ${d.bank_loan_amount > 0 ? `<div class="flex-between" style="margin-top:6px;"><span class="muted">Bank loan (rest of your share)</span><b>₹${d.bank_loan_amount.toLocaleString('en-IN')}</b></div>` : ''}
+          <p class="muted" style="margin-top:10px;font-size:12px;">${d.note}</p>
+          <a href="https://pmkusum.mnre.gov.in" target="_blank" class="btn btn-gold" style="margin-top:12px;">Apply on Official Portal ↗</a>
+        </div>`;
+    });
+}
+
+calcSolarSubsidy();
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Equipment Rental — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Equipment Rental Marketplace</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Tractor, harvester, sprayer jaise mehenge tools nearby se rent karein — ya apna khaali equipment list karein aur kharch bachaayein.</p>
+
+  <div class="field"><label>Filter by location</label><select id="eqLocFilter" onchange="loadEquipment()"></select></div>
+  <div id="equipmentList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">➕ List Your Equipment</div>
+    <div class="field"><label>Equipment name</label><input type="text" id="eqName" placeholder="e.g. Tractor (35 HP)"></div>
+    <div class="field"><label>Rate</label><input type="text" id="eqRate" placeholder="e.g. ₹600/hour"></div>
+    <div class="field"><label>Location</label><select id="eqLoc"></select></div>
+    <div class="field"><label>Contact number</label><input type="tel" id="eqContact" placeholder="+91 90000 00000"></div>
+    <button class="btn btn-primary" onclick="submitEquipment()">List Equipment</button>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateEqLocs(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    const opts = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    document.getElementById('eqLoc').innerHTML = opts;
+    document.getElementById('eqLocFilter').innerHTML = '<option value="">All locations</option>' + opts;
+    loadEquipment();
+  });
+}
+
+function loadEquipment(){
+  const location = document.getElementById('eqLocFilter').value;
+  fetch('/api/equipment_listings' + (location ? '?location=' + encodeURIComponent(location) : ''))
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('equipmentList').innerHTML = d.listings.map(e => `
+        <div class="card">
+          <div class="flex-between">
+            <div><b>${e.equipment}</b><div class="muted" style="font-size:12px;">👤 ${e.owner} • 📍 ${e.location}</div></div>
+            <span class="chip ${e.available ? 'chip-up' : 'chip-down'}">${e.available ? 'Available' : 'Booked'}</span>
+          </div>
+          <div class="flex-between" style="margin-top:10px;">
+            <b style="font-family:var(--font-display);color:var(--leaf-700);">${e.rate}</b>
+            <a href="tel:${e.contact.replace(/\\s/g,'')}" class="btn-sm btn btn-gold">📞 Contact</a>
+          </div>
+        </div>`).join('') || '<div class="card center"><p class="mt-0 muted">Is location me abhi koi equipment listed nahi hai.</p></div>';
+    });
+}
+
+function submitEquipment(){
+  const equipment = document.getElementById('eqName').value.trim();
+  const rate = document.getElementById('eqRate').value.trim();
+  const location = document.getElementById('eqLoc').value;
+  const contact = document.getElementById('eqContact').value.trim();
+  if (!equipment || !rate) return;
+  fetch('/api/equipment_listing', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({equipment, rate, location, contact})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'listed'){
+        document.getElementById('eqName').value = '';
+        document.getElementById('eqRate').value = '';
+        document.getElementById('eqContact').value = '';
+        loadEquipment();
+      }
+    });
+}
+
+populateEqLocs();
+</script>
+{% endblock %}

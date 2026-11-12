@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Alerts — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Price &amp; Weather Alerts</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Ek threshold set karein — jab mandi bhaav ya mausam usse cross kare, aapko push notification mil jaayega. (Push Notifications Profile me on karein.)</p>
+
+  <div class="card">
+    <div class="card-title">💰 New Price Alert</div>
+    <div class="field"><label>Crop</label>
+      <select id="paCrop">
+        <option>Rice</option><option>Wheat</option><option>Maize</option><option>Groundnut</option><option>Soybean</option>
+      </select>
+    </div>
+    <div class="field"><label>Location</label><select id="paLoc"></select></div>
+    <div class="field"><label>Alert me when price</label>
+      <select id="paDirection"><option value="above">Goes above (₹)</option><option value="below">Drops below (₹)</option></select>
+    </div>
+    <div class="field"><label>Threshold price (₹/quintal)</label><input type="number" id="paThreshold" min="1" placeholder="e.g. 2200"></div>
+    <button class="btn btn-primary" onclick="createPriceAlert()">Create Price Alert</button>
+  </div>
+
+  <div class="section-title">Your Price Alerts</div>
+  <div id="priceAlertsList"></div>
+
+  <div class="card">
+    <div class="card-title">🌦️ Weather Alert Check</div>
+    <p class="muted mt-0">Heavy rain ya extreme heat ke liye apne location ka forecast check karein — agar warning-worthy hai to push notification bhej di jaayegi.</p>
+    <div class="field"><label>Location</label><select id="waLoc"></select></div>
+    <button class="btn btn-gold" onclick="checkWeatherAlerts()">Check Weather Now</button>
+    <div id="weatherAlertResult"></div>
+  </div>
+
+  <div class="section-title">Notification History</div>
+  <div id="notifHistory"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function populateAlertLocs(){
+  fetch('/api/locations').then(r=>r.json()).then(d=>{
+    const opts = d.locations.map(l=>`<option value="${l}">${l}</option>`).join('');
+    document.getElementById('paLoc').innerHTML = opts;
+    document.getElementById('waLoc').innerHTML = opts;
+  });
+}
+
+function loadPriceAlerts(){
+  fetch('/api/price_alerts').then(r=>r.json()).then(d=>{
+    if (!d.alerts.length){
+      document.getElementById('priceAlertsList').innerHTML = '<div class="card center"><p class="mt-0 muted">Koi price alert set nahi hai.</p></div>';
+      return;
+    }
+    document.getElementById('priceAlertsList').innerHTML = d.alerts.map(a => `
+      <div class="card flex-between">
+        <div>
+          <b>${a.crop}</b> <span class="muted">(${a.location})</span>
+          <div class="muted" style="font-size:12px;">Alert when price ${a.direction === 'above' ? '≥' : '≤'} ₹${a.threshold_price}</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="chip ${a.triggered ? 'chip-up' : 'chip-stable'}">${a.triggered ? 'Triggered' : 'Watching'}</span>
+          <button class="ri-delete-btn" onclick="deletePriceAlert(${a.id})">Delete</button>
+        </div>
+      </div>`).join('');
+  });
+}
+
+function createPriceAlert(){
+  const crop = document.getElementById('paCrop').value;
+  const location = document.getElementById('paLoc').value;
+  const direction = document.getElementById('paDirection').value;
+  const threshold_price = document.getElementById('paThreshold').value;
+  if (!threshold_price) { document.getElementById('paThreshold').focus(); return; }
+  fetch('/api/price_alert', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, location, direction, threshold_price})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'created'){
+        document.getElementById('paThreshold').value = '';
+        loadPriceAlerts();
+      }
+    });
+}
+
+function deletePriceAlert(id){
+  fetch('/api/price_alert/' + id, {method:'DELETE'}).then(()=>loadPriceAlerts());
+}
+
+function checkWeatherAlerts(){
+  const location = document.getElementById('waLoc').value;
+  document.getElementById('weatherAlertResult').innerHTML = '<div class="skeleton skeleton-line" style="margin-top:10px;"></div>';
+  fetch('/api/check_weather_alerts', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({location})})
+    .then(r=>r.json()).then(d=>{
+      if (d.alerts_sent && d.alerts_sent.length){
+        document.getElementById('weatherAlertResult').innerHTML = `<p class="mt-0" style="margin-top:10px;color:var(--alert-600);">⚠️ ${d.alerts_sent.length} warning(s) sent as push notification!</p>`;
+      } else {
+        document.getElementById('weatherAlertResult').innerHTML = `<p class="mt-0" style="margin-top:10px;color:var(--leaf-700);">✅ No severe weather expected — rain ~${d.rain_next_2_days_mm}mm, peak temp ~${d.peak_temp_c}°C.</p>`;
+      }
+      loadNotifHistory();
+    });
+}
+
+function loadNotifHistory(){
+  fetch('/api/notifications').then(r=>r.json()).then(d=>{
+    if (!d.notifications.length){
+      document.getElementById('notifHistory').innerHTML = '<div class="card center"><p class="mt-0 muted">Abhi tak koi notification nahi bheja gaya.</p></div>';
+      return;
+    }
+    document.getElementById('notifHistory').innerHTML = d.notifications.map(n => `
+      <div class="card">
+        <div class="flex-between">
+          <b>${n.title}</b>
+          <span class="chip chip-stable">${n.topic}</span>
+        </div>
+        <p class="mt-0" style="margin-top:4px;font-size:13px;">${n.body}</p>
+        <div class="muted" style="font-size:11px;margin-top:6px;">${n.sent_at} • ${n.delivered_real_push ? 'Delivered (real push)' : 'Demo mode'}</div>
+      </div>`).join('');
+  });
+}
+
+populateAlertLocs();
+loadPriceAlerts();
+loadNotifHistory();
+</script>
+{% endblock %}

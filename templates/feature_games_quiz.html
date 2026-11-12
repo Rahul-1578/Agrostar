@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Farming Quiz — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/feature/games">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_quiz">Farming Quiz</h1>
+  <select id="quizLangSelect" class="lang-sync-select" style="border-radius:20px;border:1px solid var(--border);padding:6px 8px;font-size:11px;" onchange="setLang(this.value); loadQuiz();">
+    <option value="en">EN</option>
+    <option value="hi">हिं</option>
+    <option value="or">ଓଡ଼ି</option>
+  </select>
+</div>
+<div class="page-body" id="quizRoot">
+  <div class="card center">
+    <div class="skeleton skeleton-line short" style="margin:0 auto;"></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let questions = [];
+let current = 0;
+let score = 0;
+let answered = false;
+
+function loadQuiz(){
+  score = 0; current = 0; answered = false;
+  const lang = getCurrentLang();
+  fetch('/api/quiz_questions?count=5&lang=' + lang).then(r => r.json()).then(d => {
+    questions = d.questions;
+    renderQuestion();
+  });
+}
+
+function renderQuestion(){
+  answered = false;
+  const q = questions[current];
+  const root = document.getElementById('quizRoot');
+  root.innerHTML = `
+    <div class="flex-between" style="margin-bottom:10px;">
+      <span class="chip chip-stable">${t('lbl_question')} ${current + 1} / ${questions.length}</span>
+      <span class="chip chip-up">${t('lbl_score')}: ${score}</span>
+    </div>
+    <div class="card">
+      <div class="card-title" style="font-size:16px;">${q.q}</div>
+      <div id="optionsList" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
+      <p class="muted" id="explainText" style="margin-top:12px;display:none;"></p>
+      <button class="btn btn-primary" id="nextBtn" style="display:none;margin-top:12px;" onclick="nextQuestion()">
+        ${current === questions.length - 1 ? t('btn_see_results') : t('btn_next_question')}
+      </button>
+    </div>`;
+
+  const optWrap = document.getElementById('optionsList');
+  q.options.forEach((opt, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-outline';
+    btn.style.textAlign = 'left';
+    btn.textContent = opt;
+    btn.onclick = () => selectOption(idx, btn);
+    optWrap.appendChild(btn);
+  });
+}
+
+function selectOption(idx, btnEl){
+  if (answered) return;
+  answered = true;
+  const q = questions[current];
+  const allBtns = document.querySelectorAll('#optionsList .btn');
+  allBtns.forEach((b, i) => {
+    if (i === q.answer) { b.style.background = 'var(--leaf-200)'; b.style.borderColor = 'var(--leaf-500)'; }
+    else if (i === idx) { b.style.background = '#FBE7E4'; b.style.borderColor = 'var(--alert-600)'; }
+  });
+  if (idx === q.answer) score++;
+
+  document.getElementById('explainText').style.display = 'block';
+  document.getElementById('explainText').textContent = '💡 ' + q.explain;
+  document.getElementById('nextBtn').style.display = 'block';
+}
+
+function nextQuestion(){
+  current++;
+  if (current >= questions.length) { renderResults(); return; }
+  renderQuestion();
+}
+
+function renderResults(){
+  const pct = Math.round((score / questions.length) * 100);
+  const msg = pct >= 80 ? t('quiz_msg_excellent') :
+              pct >= 50 ? t('quiz_msg_good') :
+              t('quiz_msg_keep_learning');
+  document.getElementById('quizRoot').innerHTML = `
+    <div class="card center">
+      <div style="font-size:40px;">🏆</div>
+      <div style="font-family:var(--font-display);font-size:30px;color:var(--leaf-700);margin-top:6px;">${score} / ${questions.length}</div>
+      <p class="muted" style="margin-top:8px;">${msg}</p>
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="loadQuiz()">${t('btn_play_again')}</button>
+      <a href="/feature/games" class="btn btn-ghost" style="margin-top:6px;">${t('btn_back_to_games')}</a>
+    </div>`;
+}
+
+document.getElementById('quizLangSelect').value = getCurrentLang();
+loadQuiz();
+</script>
+{% endblock %}

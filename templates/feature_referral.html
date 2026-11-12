@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Referral Program — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Referral Program</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Dost ko AgroStar invite karein — jab wo join karein, dono ko reward points milte hain.</p>
+
+  <div class="card center">
+    <div class="muted" style="font-size:12px;">Your Referral Code</div>
+    <div style="font-family:var(--font-display);font-size:26px;letter-spacing:1px;color:var(--leaf-700);" id="referralCode">...</div>
+    <button class="btn-sm btn btn-outline" style="margin-top:8px;" onclick="copyReferralLink()">📋 Copy Link</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📤 Share With Friends</div>
+    <a id="whatsappShareBtn" class="btn btn-primary" href="#" target="_blank" onclick="trackShare()">📱 Share on WhatsApp</a>
+  </div>
+
+  <div class="card flex-between">
+    <div>
+      <div class="muted" style="font-size:12px;">Invites Sent</div>
+      <div style="font-family:var(--font-display);font-size:20px;" id="invitesSent">0</div>
+    </div>
+    <div>
+      <div class="muted" style="font-size:12px;">Friends Joined</div>
+      <div style="font-family:var(--font-display);font-size:20px;color:var(--leaf-700);" id="successfulReferrals">0</div>
+    </div>
+    <div>
+      <div class="muted" style="font-size:12px;">Points Earned</div>
+      <div style="font-family:var(--font-display);font-size:20px;color:var(--gold-600);" id="rewardPoints">0</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🧪 Demo: Simulate a Friend Joining</div>
+    <p class="muted mt-0">Asli app me, jab aapka dost aapke code se sign up karega, ye automatically ho jaayega. Yahan test karne ke liye:</p>
+    <div class="field"><label>Friend's name</label><input type="text" id="friendName" placeholder="e.g. Ramesh"></div>
+    <button class="btn btn-gold" onclick="simulateReferral()">Simulate Redeem</button>
+    <p class="muted" id="redeemStatus" style="margin-top:8px;"></p>
+  </div>
+
+  <div class="section-title">Referral History</div>
+  <div id="referralHistory"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let currentReferralCode = '';
+let currentShareLink = '';
+
+function loadReferralInfo(){
+  fetch('/api/referral_info').then(r=>r.json()).then(d=>{
+    currentReferralCode = d.code;
+    currentShareLink = d.share_link;
+    document.getElementById('referralCode').textContent = d.code;
+    document.getElementById('invitesSent').textContent = d.invites_sent;
+    document.getElementById('successfulReferrals').textContent = d.successful_referrals;
+    document.getElementById('rewardPoints').textContent = d.reward_points;
+    const msg = encodeURIComponent(`Mai AgroStar app use kar raha hoon — kheti ke liye bahut kaam ka hai! Mera code use karke join karo: ${d.code}\n${d.share_link}`);
+    document.getElementById('whatsappShareBtn').href = `https://wa.me/?text=${msg}`;
+  });
+}
+
+function copyReferralLink(){
+  navigator.clipboard.writeText(currentShareLink).then(()=>{
+    fetch('/api/referral_share', {method:'POST'}).then(()=>loadReferralInfo());
+  }).catch(()=>{});
+}
+
+function trackShare(){
+  fetch('/api/referral_share', {method:'POST'}).then(()=>loadReferralInfo());
+}
+
+function simulateReferral(){
+  const friend_name = document.getElementById('friendName').value.trim() || 'A friend';
+  fetch('/api/referral_redeem', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({code: currentReferralCode, friend_name})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('redeemStatus').textContent = d.message || d.message;
+      if (d.status === 'redeemed'){
+        document.getElementById('friendName').value = '';
+        loadReferralInfo();
+        loadReferralHistory();
+      }
+    });
+}
+
+function loadReferralHistory(){
+  fetch('/api/referral_log').then(r=>r.json()).then(d=>{
+    if (!d.log.length){
+      document.getElementById('referralHistory').innerHTML = '<div class="card center"><p class="mt-0 muted">Abhi tak koi referral redeem nahi hua.</p></div>';
+      return;
+    }
+    document.getElementById('referralHistory').innerHTML = d.log.map(e => `
+      <div class="card flex-between">
+        <div><b>${e.redeemed_by}</b><div class="muted" style="font-size:12px;">${e.redeemed_at}</div></div>
+        <b style="color:var(--gold-600);">+${e.reward_points} pts</b>
+      </div>`).join('');
+  });
+}
+
+loadReferralInfo();
+loadReferralHistory();
+</script>
+{% endblock %}

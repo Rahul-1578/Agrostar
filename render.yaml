@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: agrostar
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      # Add your real keys here from the Render dashboard (Environment tab)
+      # instead of committing them to this file:
+      #   OPENAI_API_KEY, GEMINI_API_KEY, MSG91_AUTH_KEY, MSG91_SENDER_ID,
+      #   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Crop Memory Match — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/feature/games">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_memory">Crop Memory Match</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="flex-between" style="margin-bottom:12px;">
+    <span class="chip chip-stable"><span data-i18n="lbl_moves">Moves</span>: <span id="moveCount">0</span></span>
+    <span class="chip chip-up" id="timerChip">0:00</span>
+  </div>
+  <div id="memoryGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;"></div>
+  <div id="winCard" style="display:none;margin-top:16px;" class="card center">
+    <div style="font-size:36px;">🎉</div>
+    <div class="card-title" style="justify-content:center;margin-top:6px;" data-i18n="txt_all_matched">All matched!</div>
+    <p class="muted" id="winStats"></p>
+    <button class="btn btn-primary" data-i18n="btn_play_again" onclick="startGame()">Play Again</button>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const EMOJIS = ['🌾','🌽','🥔','🍅','🥕','🌻','🍆','🫘'];
+let cards = [];
+let flipped = [];
+let matched = [];
+let moves = 0;
+let seconds = 0;
+let timerInterval = null;
+
+function shuffle(arr){
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function startGame(){
+  cards = shuffle([...EMOJIS, ...EMOJIS]);
+  flipped = [];
+  matched = [];
+  moves = 0;
+  seconds = 0;
+  document.getElementById('moveCount').textContent = '0';
+  document.getElementById('winCard').style.display = 'none';
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    seconds++;
+    const m = Math.floor(seconds / 60), s = seconds % 60;
+    document.getElementById('timerChip').textContent = m + ':' + String(s).padStart(2, '0');
+  }, 1000);
+  renderGrid();
+}
+
+function renderGrid(){
+  const grid = document.getElementById('memoryGrid');
+  grid.innerHTML = '';
+  cards.forEach((emoji, idx) => {
+    const isFlipped = flipped.includes(idx) || matched.includes(idx);
+    const cell = document.createElement('div');
+    cell.style.cssText = `aspect-ratio:1/1;border-radius:12px;display:flex;align-items:center;justify-content:center;
+      font-size:26px;cursor:pointer;transition:transform .15s ease;
+      background:${isFlipped ? 'var(--surface)' : 'var(--leaf-700)'};
+      border:1px solid var(--border);box-shadow:var(--shadow-card);`;
+    cell.textContent = isFlipped ? emoji : '';
+    if (!isFlipped) cell.onclick = () => flipCard(idx);
+    grid.appendChild(cell);
+  });
+}
+
+function flipCard(idx){
+  if (flipped.length === 2 || flipped.includes(idx) || matched.includes(idx)) return;
+  flipped.push(idx);
+  renderGrid();
+
+  if (flipped.length === 2) {
+    moves++;
+    document.getElementById('moveCount').textContent = moves;
+    const [a, b] = flipped;
+    if (cards[a] === cards[b]) {
+      matched.push(a, b);
+      flipped = [];
+      renderGrid();
+      if (matched.length === cards.length) {
+        clearInterval(timerInterval);
+        document.getElementById('winCard').style.display = 'block';
+        document.getElementById('winStats').textContent = `${moves} ${t('lbl_moves').toLowerCase()} • ${document.getElementById('timerChip').textContent}`;
+      }
+    } else {
+      setTimeout(() => { flipped = []; renderGrid(); }, 700);
+    }
+  }
+}
+
+startGame();
+</script>
+{% endblock %}

@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Profile — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div class="brand"><div class="brand-mark">A</div><h1 data-i18n="profile_title">Profile</h1></div>
+</div>
+<div class="page-body">
+
+  <div class="card center">
+    {% if user and user.picture %}
+    <img src="{{ user.picture }}" referrerpolicy="no-referrer" alt="{{ user.name }}"
+      style="width:72px;height:72px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block;">
+    {% else %}
+    <div style="width:72px;height:72px;border-radius:50%;background:var(--leaf-200);
+      display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 10px;">👨‍🌾</div>
+    {% endif %}
+    <h3>{{ user.name if user and user.name else 'Farmer' }}</h3>
+    <span class="muted" id="profileLocText">{{ 'Guest account' if user and user.guest else (user.phone if user and user.phone else '') }} • 3 fields registered</span>
+  </div>
+
+  <div class="section-title" data-i18n="profile_your_location">Your Location</div>
+  <div class="card">
+    <div class="field">
+      <label data-i18n="profile_field_location">Field / village location</label>
+      <select id="farmerLocSelect"></select>
+    </div>
+  </div>
+
+  <div class="section-title" data-i18n="profile_badges">Your Badges</div>
+  <div class="card">
+    <div class="flex-between" style="margin-bottom:10px;">
+      <span class="muted">Points: <b id="pointsVal" style="color:var(--leaf-700);">--</b></span>
+      <span class="muted" id="milestoneText"></span>
+    </div>
+    <div class="badge-grid" id="badgeGrid"></div>
+  </div>
+
+  <div class="section-title" data-i18n="profile_offline_sms">Offline &amp; SMS Alerts</div>
+  <div class="card">
+    <p class="muted mt-0">No internet in your village? Get key alerts by SMS instead.</p>
+    <div class="field"><label>Mobile number</label><input type="tel" id="smsPhone" placeholder="10-digit mobile number"></div>
+    <button class="btn btn-outline" onclick="subscribeSms()">Enable SMS Alerts</button>
+    <p class="muted" id="smsStatus" style="margin-top:8px;"></p>
+  </div>
+
+  <div class="section-title" data-i18n="profile_language">Language</div>
+  <div class="card">
+    <div class="field">
+      <select id="profileLangSelect" class="lang-sync-select" onchange="setLang(this.value)">
+        <option value="en">English</option>
+        <option value="hi">हिंदी (Hindi)</option>
+        <option value="or">ଓଡ଼ିଆ (Odia)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section-title" data-i18n="profile_display">Display</div>
+  <div class="card">
+    <div class="theme-switch-row">
+      <span class="ts-label"><span class="ts-icon">🌙</span> <span data-i18n="profile_dark_mode">Dark Mode</span></span>
+      <label class="switch">
+        <input type="checkbox" class="theme-toggle-input" onchange="toggleTheme(this.checked)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <p class="muted mt-0" style="margin-top:8px;" data-i18n="profile_dark_mode_note">Easier on the eyes in low light — works on every screen.</p>
+  </div>
+
+  <div class="section-title" data-i18n="profile_notifications">Notifications</div>
+  <div class="card">
+    <div class="theme-switch-row">
+      <span class="ts-label"><span class="ts-icon">🔔</span> <span data-i18n="notif_push_enable">Push Notifications</span></span>
+      <label class="switch">
+        <input type="checkbox" id="pushToggle" onchange="togglePush(this.checked)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <p class="muted mt-0" id="pushStatusText" style="margin-top:8px;" data-i18n="notif_push_note">Get weather warnings, price alerts, and disease outbreak alerts even when the app is closed.</p>
+
+    <div id="pushTopicsBlock" style="display:none;margin-top:14px;border-top:1px solid var(--border,#eee);padding-top:12px;">
+      <div class="flex-between" style="padding:6px 0;">
+        <span data-i18n="notif_weather">Weather alerts</span><input type="checkbox" class="push-topic-cb" value="weather" checked onchange="updatePushTopics()">
+      </div>
+      <div class="flex-between" style="padding:6px 0;">
+        <span data-i18n="notif_market">Market price updates</span><input type="checkbox" class="push-topic-cb" value="price" checked onchange="updatePushTopics()">
+      </div>
+      <div class="flex-between" style="padding:6px 0;">
+        <span data-i18n="notif_disease">Disease outbreak alerts</span><input type="checkbox" class="push-topic-cb" value="disease" checked onchange="updatePushTopics()">
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="sendTestPush()" data-i18n="notif_send_test">Send Test Notification</button>
+    </div>
+    <a href="/feature/notification-alerts" style="display:block;margin-top:10px;color:var(--leaf-700);font-weight:700;font-size:13px;" data-i18n="notif_manage_alerts">Set price &amp; weather thresholds →</a>
+  </div>
+
+  <div class="section-title" data-i18n="profile_reminders_section">Reminders</div>
+  <div class="card">
+    <div class="flex-between" style="padding:8px 0;">
+      <span data-i18n="notif_fertilizer">Fertilizer reminders</span><input type="checkbox" checked>
+    </div>
+    <a href="/feature/reminders" style="display:block;margin-top:6px;color:var(--leaf-700);font-weight:700;font-size:13px;" data-i18n="profile_manage_reminders">Manage all reminders →</a>
+  </div>
+
+  <div class="section-title" data-i18n="profile_account">Account</div>
+  <div class="card">
+    <div class="flex-between" style="padding:8px 0;cursor:pointer;" onclick="showInfo('fields')"><span data-i18n="profile_my_fields">My Fields</span><span>›</span></div>
+    <div class="flex-between" style="padding:8px 0;cursor:pointer;" onclick="showInfo('help')"><span data-i18n="profile_help">Help &amp; Support</span><span>›</span></div>
+    <div class="flex-between" style="padding:8px 0;cursor:pointer;" onclick="showInfo('about')"><span data-i18n="profile_about">About AgroStar</span><span>›</span></div>
+  </div>
+
+  <button class="btn btn-outline" onclick="location.href='/'" data-i18n="profile_logout">Log Out</button>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+fetch('/api/gamification').then(r=>r.json()).then(d=>{
+  document.getElementById('pointsVal').textContent = d.points;
+  document.getElementById('milestoneText').textContent = d.next_milestone;
+  document.getElementById('badgeGrid').innerHTML = d.badges.map(b=>`
+    <div class="badge-item ${b.earned ? '' : 'locked'}">
+      <div class="badge-ic">${b.earned ? '🏅' : '🔒'}</div>
+      <span>${b.name}</span>
+    </div>`).join('');
+});
+
+function subscribeSms(){
+  const phone = document.getElementById('smsPhone').value;
+  fetch('/api/sms_subscribe', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({phone})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('smsStatus').textContent = d.message || d.message;
+    });
+}
+
+fetch('/api/locations').then(r=>r.json()).then(d=>{
+  const sel = document.getElementById('farmerLocSelect');
+  sel.innerHTML = d.locations.map(l=>`<option value="${l}" ${l==='Cuttack'?'selected':''}>${l}</option>`).join('');
+  sel.addEventListener('change', () => {
+    document.getElementById('profileLocText').textContent = sel.value + ' • 3 fields registered';
+  });
+});
+
+// "My Fields" is profile-specific, so it's added to the shared INFO_CONTENT
+// object (defined globally in base.html) rather than duplicating the modal.
+window.INFO_CONTENT.fields = {
+  title: 'My Fields',
+  body: `
+    <div class="card" style="margin-bottom:10px;">
+      <div class="flex-between"><b>Field 1 — North plot</b><span class="chip chip-up">1.2 ha</span></div>
+      <p class="muted mt-0" style="margin-top:6px;">Rice • Tillering stage</p>
+    </div>
+    <div class="card" style="margin-bottom:10px;">
+      <div class="flex-between"><b>Field 2 — East plot</b><span class="chip chip-stable">0.8 ha</span></div>
+      <p class="muted mt-0" style="margin-top:6px;">Groundnut • Sown 5 days ago</p>
+    </div>
+    <div class="card">
+      <div class="flex-between"><b>Field 3 — South plot</b><span class="chip chip-down">1.5 ha</span></div>
+      <p class="muted mt-0" style="margin-top:6px;">Fallow • Ready for next sowing</p>
+    </div>`
+};
+
+// ---------------------------------------------------------------------
+// NEW: Push Notifications — subscribe/unsubscribe flow using the Web
+// Push API + the service worker already registered in base.html.
+// ---------------------------------------------------------------------
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+function getPushTopics(){
+  return Array.from(document.querySelectorAll('.push-topic-cb'))
+    .filter(cb => cb.checked).map(cb => cb.value);
+}
+
+async function togglePush(enable){
+  const statusEl = document.getElementById('pushStatusText');
+  const topicsBlock = document.getElementById('pushTopicsBlock');
+
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    statusEl.textContent = 'Push notifications are not supported on this browser/device.';
+    document.getElementById('pushToggle').checked = false;
+    return;
+  }
+
+  if (!enable) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await fetch('/api/push_unsubscribe', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({endpoint: sub.endpoint})});
+        await sub.unsubscribe();
+      }
+    } catch(e) { console.warn('Unsubscribe failed:', e); }
+    topicsBlock.style.display = 'none';
+    statusEl.textContent = 'Push notifications turned off.';
+    localStorage.setItem('agrostar_push_enabled', 'false');
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      statusEl.textContent = 'Notification permission was not granted — enable it in your browser settings to receive alerts.';
+      document.getElementById('pushToggle').checked = false;
+      return;
+    }
+
+    const keyRes = await fetch('/api/push_public_key').then(r => r.json());
+    const reg = await navigator.serviceWorker.ready;
+    let subscribeOptions = { userVisibleOnly: true };
+    if (keyRes.public_key) {
+      subscribeOptions.applicationServerKey = urlBase64ToUint8Array(keyRes.public_key);
+    }
+    const sub = await reg.pushManager.subscribe(subscribeOptions);
+
+    const res = await fetch('/api/push_subscribe', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ subscription: sub.toJSON(), topics: getPushTopics() })
+    }).then(r => r.json());
+
+    topicsBlock.style.display = 'block';
+    localStorage.setItem('agrostar_push_enabled', 'true');
+    statusEl.textContent = res.real_push_configured
+      ? 'Push notifications enabled — you\'ll get real alerts on this device.'
+      : 'Push notifications enabled (demo mode — set VAPID keys for real delivery). Try "Send Test Notification" below.';
+  } catch(e) {
+    console.warn('Push subscribe failed:', e);
+    statusEl.textContent = 'Could not enable push notifications on this device/browser.';
+    document.getElementById('pushToggle').checked = false;
+  }
+}
+
+async function updatePushTopics(){
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+    await fetch('/api/push_subscribe', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ subscription: sub.toJSON(), topics: getPushTopics() })
+    });
+  } catch(e) { console.warn('Topic update failed:', e); }
+}
+
+function sendTestPush(){
+  const statusEl = document.getElementById('pushStatusText');
+  fetch('/api/push_test', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({title: 'AgroStar Test Alert', body: 'This is a test notification — push alerts are working! 🌾'})})
+    .then(r=>r.json()).then(d=>{ statusEl.textContent = d.message; });
+}
+
+// Restore toggle state on page load if a subscription already exists
+(async function initPushToggleState(){
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      document.getElementById('pushToggle').checked = true;
+      document.getElementById('pushTopicsBlock').style.display = 'block';
+      document.getElementById('pushStatusText').textContent = 'Push notifications are enabled on this device.';
+    }
+  } catch(e) { /* non-fatal */ }
+})();
+</script>
+{% endblock %}

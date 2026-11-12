@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Govt Schemes — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;" data-i18n="hdr_schemes">Government Schemes</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <div class="card">
+    <div class="card-title">🏛️ <span data-i18n="card_check_eligibility">Check your eligibility</span></div>
+    <div class="field"><label data-i18n="lbl_land_size">Land size (acres)</label><input type="number" id="landSize" value="2" min="0.1" step="0.1"></div>
+    <div class="field"><label data-i18n="lbl_category">Category</label>
+      <select id="category"><option>General</option><option>SC/ST</option><option>OBC</option><option>Small &amp; Marginal</option></select>
+    </div>
+    <button class="btn btn-primary" data-i18n="btn_check_eligibility" onclick="checkEligibility()">Check My Eligibility</button>
+  </div>
+
+  <div class="section-title" data-i18n="sec_schemes_for_you">Schemes for You</div>
+  <div id="schemeList">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function checkEligibility(){
+  const land_size = document.getElementById('landSize').value;
+  const category = document.getElementById('category').value;
+  fetch('/api/scheme_eligibility', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({land_size, category, lang: getCurrentLang()})})
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('schemeList').innerHTML = d.results.map(s=>`
+        <div class="card">
+          <div class="flex-between">
+            <b>${s.name}</b>
+            <span class="chip ${s.eligible ? 'chip-up' : 'chip-down'}">${s.eligible ? t('chip_eligible') : t('chip_check_docs')}</span>
+          </div>
+          <p class="muted" style="margin:6px 0 4px;">${s.benefit}</p>
+          <p class="mt-0" style="font-size:13px;">${s.note}</p>
+        </div>`).join('');
+    });
+}
+checkEligibility();
+document.addEventListener('agrostar:langchange', checkEligibility);
+</script>
+{% endblock %}

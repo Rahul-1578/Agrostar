@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Crop Rotation Planner — AgroStar{% endblock %}
+{% block content %}
+<div class="topbar">
+  <a class="back-btn" href="/features">←</a>
+  <h1 style="font-size:18px;">Crop Rotation Planner</h1>
+  <div style="width:38px;"></div>
+</div>
+<div class="page-body">
+  <p class="muted">Is season kya lagaya — uske hisaab se agle season ke liye best crop suggest karte hain, taaki mitti healthy rahe aur pest cycle break ho.</p>
+
+  <div class="card">
+    <div class="field"><label>What did you grow this season?</label><select id="rotCurrentCrop" onchange="getRotationAdvice()"></select></div>
+  </div>
+
+  <div id="rotationAdvice">
+    <div class="card"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line short"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📝 Log This Season</div>
+    <p class="muted mt-0">Apna rotation history track karein, taaki humein pata chale agar aap same crop baar-baar laga rahe hain.</p>
+    <div class="field"><label>Crop</label><select id="logCrop"></select></div>
+    <div class="field"><label>Season</label><input type="text" id="logSeason" placeholder="e.g. Kharif 2026"></div>
+    <button class="btn btn-primary" onclick="logRotation()">Log Season</button>
+  </div>
+
+  <div class="section-title">Rotation History</div>
+  <div id="rotationHistory"></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function getRotationAdvice(){
+  const current_crop = document.getElementById('rotCurrentCrop').value;
+  fetch('/api/crop_rotation_advice?current_crop=' + encodeURIComponent(current_crop))
+    .then(r=>r.json()).then(d=>{
+      if (document.getElementById('rotCurrentCrop').options.length === 0){
+        const opts = d.crops_available.map(c => `<option value="${c}" ${c===d.current_crop?'selected':''}>${c}</option>`).join('');
+        document.getElementById('rotCurrentCrop').innerHTML = opts;
+        document.getElementById('logCrop').innerHTML = d.crops_available.map(c=>`<option>${c}</option>`).join('');
+      }
+      document.getElementById('rotationAdvice').innerHTML = `
+        ${d.repeat_warning ? `<div class="card" style="border:2px solid var(--alert-600);"><p class="mt-0" style="color:var(--alert-600);">⚠️ ${d.repeat_warning}</p></div>` : ''}
+        <div class="card">
+          <div class="card-title">🌱 Recommended Next Crops</div>
+          ${d.recommended_next.map(r => `
+            <div style="padding:8px 0;border-top:1px solid #eee;">
+              <b>${r.crop}</b>
+              <p class="muted mt-0" style="font-size:13px;margin-top:2px;">${r.reason}</p>
+            </div>`).join('')}
+        </div>
+        <div class="card">
+          <div class="card-title" style="color:var(--alert-600);">🚫 Avoid Next</div>
+          <p class="mt-0">${d.avoid_next.join(', ')}</p>
+          <p class="muted" style="margin-top:6px;font-size:13px;">${d.avoid_reason}</p>
+        </div>`;
+    });
+}
+
+function logRotation(){
+  const crop = document.getElementById('logCrop').value;
+  const season = document.getElementById('logSeason').value.trim();
+  if (!season) { document.getElementById('logSeason').focus(); return; }
+  fetch('/api/crop_rotation_log', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({crop, season})})
+    .then(r=>r.json()).then(d=>{
+      if (d.status === 'logged'){
+        document.getElementById('logSeason').value = '';
+        loadRotationHistory();
+        getRotationAdvice();
+      }
+    });
+}
+
+function loadRotationHistory(){
+  fetch('/api/crop_rotation_history').then(r=>r.json()).then(d=>{
+    if (!d.history.length){
+      document.getElementById('rotationHistory').innerHTML = '<div class="card center"><p class="mt-0 muted">Abhi tak koi season log nahi kiya.</p></div>';
+      return;
+    }
+    document.getElementById('rotationHistory').innerHTML = d.history.map(h => `
+      <div class="card flex-between">
+        <div><b>${h.crop}</b><div class="muted" style="font-size:12px;">${h.season}</div></div>
+        <span class="muted" style="font-size:12px;">${h.logged_at}</span>
+      </div>`).join('');
+  });
+}
+
+getRotationAdvice();
+loadRotationHistory();
+</script>
+{% endblock %}
